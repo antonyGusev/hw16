@@ -1,0 +1,6 @@
+.ruff_cache/
+.pytest_cache/
+.env
+build/
+embedded_tests.egg-info/
+__pycache__/

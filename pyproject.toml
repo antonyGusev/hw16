@@ -1,0 +1,52 @@
+[project]
+name = 'embedded-tests'
+version = '0.1.0'
+requires-python = '>=3.11'
+dependencies = [
+  'pytest>=8.2',
+  'pytest-asyncio',
+  'pyserial>=3.5',
+  'poethepoet>=0.29',
+  'bleak',
+  'python-dotenv',
+  'requests',
+  'opencv-python',
+  'numpy',
+  'ruff',
+]
+
+[tool.setuptools.packages.find]
+where = ['.']
+include = [
+  'framework*',
+  'lib*',
+]
+exclude = [
+  'tests*',
+]
+
+[tool.pytest.ini_options]
+testpaths = ['tests']
+python_files = ['test_*.py']
+pythonpath = ['.']
+addopts = '-v --tb=short'
+
+[tool.poe.tasks]
+regression = 'pytest tests/wifi/test_wifi_positive.py'
+
+positive_tests = 'pytest tests/wifi/test_wifi_positive.py'
+
+ble_smoke = 'pytest tests/ble/test_ble_smoke.py'
+
+lint = 'ruff check .'
+format = 'ruff format .'
+init = 'pip install -e .'
+
+[tool.ruff]
+line-length = 100
+indent-width = 2
+
+[tool.ruff.format]
+quote-style = 'single'
+indent-style = 'space'
+line-ending = 'auto'
