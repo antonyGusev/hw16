@@ -30,13 +30,16 @@ testpaths = ['tests']
 python_files = ['test_*.py']
 pythonpath = ['.']
 addopts = '-v --tb=short'
+markers = [
+    "positive: positive test cases",
+    "negative: negative test cases",
+]
 
 [tool.poe.tasks]
-regression = 'pytest tests/wifi/test_wifi_positive.py'
+regression = 'pytest'
 
-positive_tests = 'pytest tests/wifi/test_wifi_positive.py'
-
-ble_smoke = 'pytest tests/ble/test_ble_smoke.py'
+positive = "pytest -m positive"
+negative = "pytest -m negative"
 
 lint = 'ruff check .'
 format = 'ruff format .'

@@ -38,9 +38,9 @@ def device():
 
 @pytest.fixture
 def connected_device(device):
-  # Reset Wi-Fi state first so this fixture does not depend on a previous test.
-  device.wifi.disconnect()
-
+  if device.wifi.status().ip != '0.0.0.0' and device.wifi.status().ssid not in (None, ''):
+    return device
+  
   result = device.wifi.connect(SSID, PASSWORD)
 
   assert result.connected, f'Failed to prepare connected DUT: {result.response}'
@@ -58,16 +58,20 @@ def disconnected_device(device):
 
 
 @pytest.fixture
-def disconnected_device_with_saved_credentials(device):
-  # Recreate saved credentials explicitly, then leave the DUT disconnected.
-  device.wifi.disconnect()
-
-  result = device.wifi.connect(SSID, PASSWORD)
-
-  assert result.connected, f'Failed to save Wi-Fi credentials: {result.response}'
-
-  disconnected = device.wifi.disconnect()
-
-  assert disconnected, 'Failed to prepare disconnected DUT.'
+def rebooted_device(device):
+  device.reboot()
 
   return device
+
+
+def pytest_collection_modifyitems(items):
+  def test_order(item):
+    if item.get_closest_marker('positive'):
+      return 0
+
+    if item.get_closest_marker('negative'):
+      return 1
+
+    return 2
+
+  items.sort(key=test_order)

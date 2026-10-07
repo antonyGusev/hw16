@@ -10,7 +10,7 @@ class CameraController:
   # HSV reference values measured from the real WS2812 through the HIL camera.
   # OpenCV stores Hue in the 0..179 range, not 0..360.
   COLOR_REFERENCES: ClassVar[dict[str, tuple[int, int, int]]] = {
-    'red': (178, 189, 246),
+    'red': (6, 226, 255),
     'green': (65, 228, 255),
   }
 
