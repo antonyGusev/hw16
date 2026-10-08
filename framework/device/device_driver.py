@@ -5,6 +5,7 @@ from .controllers import (
   AuthController,
   ConfigController,
   DistanceSensorController,
+  LampController,
   WifiController,
 )
 
@@ -17,6 +18,7 @@ class DeviceDriver:
     self.alarm = AlarmController(connector)
     self.config = ConfigController(connector)
     self.distance = DistanceSensorController(connector)
+    self.lamp = LampController(connector)
     self.wifi = WifiController(connector)
 
   def help(self) -> list[str]:
@@ -24,6 +26,9 @@ class DeviceDriver:
 
   def status(self) -> list[str]:
     return self._connector.execute_command('status')
+  
+  def version(self) -> list[str]:
+    return self._connector.execute_command('version', until='state:')
 
   def reboot(self) -> list[str]:
     # Reboot does not return a regular command response,

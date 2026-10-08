@@ -5,53 +5,58 @@ import cv2
 import numpy as np
 import requests
 
+from lib import wait_for_condition
+
 
 class CameraController:
-  # HSV reference values measured from the real WS2812 through the HIL camera.
-  # OpenCV stores Hue in the 0..179 range, not 0..360.
+  # Calibrated HSV values for each supported lamp color.
+  # These values are specific to the current camera position,
+  # exposure settings, lamp brightness, and physical test stand.
   COLOR_REFERENCES: ClassVar[dict[str, tuple[int, int, int]]] = {
-    'red': (6, 226, 255),
-    'green': (65, 228, 255),
+    'red': (7, 244, 160),
+    'green': (62, 252, 146),
+    'blue': (105, 255, 145),
+    'yellow': (36, 195, 153),
+    'purple': (157, 147, 143),
+    'cyan': (85, 249, 149),
+    'white': (94, 104, 229),
   }
 
-  # Allowed deviation from the calibrated HSV reference values.
+  # Maximum allowed difference between the measured HSV value
+  # and the calibrated reference value.
   COLOR_TOLERANCE: ClassVar[dict[str, int]] = {
     'h': 5,
     's': 20,
     'v': 20,
   }
 
-  # Dynamic ROI detection keeps only the brightest pixels, then searches for
-  # a compact bright component that is likely to be the WS2812.
-  BRIGHTNESS_PERCENTILE = 95
-  MIN_BLOB_AREA = 50
-  MAX_BLOB_AREA_RATIO = 0.1
-  ROI_PADDING = 10
-  # Known WS2812 location used when dynamic detection cannot find a valid blob.
-  # Format: x, y, width, height.
-  FALLBACK_ROI = (268, 281, 142, 137)
+  # Fixed ROI containing the WS2812 LED.
+  # Format: (x, y, width, height).
+  ROI = (280, 355, 75, 75)
 
-  def __init__(self, base_url: str, timeout: float = 5):
-    self.base_url = base_url.rstrip('/')
+  def __init__(self, capture_url: str, timeout: float = 5):
+    # Full camera capture endpoint, for example:
+    # http://192.168.68.104/capture
+    self.capture_url = capture_url
     self.timeout = timeout
-    self._roi_source = 'unknown'
 
   def capture(self) -> np.ndarray:
-    # /capture returns a JPEG from the HIL camera web server.
-    response = requests.get(f'{self.base_url}/capture', timeout=self.timeout)
+    """Capture a single frame from the HIL camera."""
+    response = requests.get(self.capture_url, timeout=self.timeout)
+
     response.raise_for_status()
 
-    image_data = np.frombuffer(response.content, dtype=np.uint8)
-    frame = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
+    image = np.frombuffer(response.content, dtype=np.uint8)
+
+    frame = cv2.imdecode(image, cv2.IMREAD_COLOR)
 
     if frame is None:
-      raise RuntimeError('Failed to decode camera JPEG.')
+      raise RuntimeError('Failed to decode camera frame.')
 
     return frame
-  
+
   def capture_artifacts(self, name: str) -> np.ndarray:
-    # Save both the annotated full frame and the cropped ROI for every LED check.
-    # Keeping this separate from capture() avoids disk writes during polling.
+    """Capture a frame and save debug and ROI images."""
     frame = self.capture()
 
     self.save_debug_image(frame, f'artifacts/camera/{name}_debug.jpg')
@@ -60,119 +65,146 @@ class CameraController:
 
     return frame
 
-  def detect_roi(self, frame: np.ndarray) -> tuple[int, int, int, int]:
-    # Brightness is taken from HSV Value so ROI detection does not depend on LED color.
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-    brightness = hsv[:, :, 2]
-
-    # Use a percentile instead of a fixed threshold so detection adapts to
-    # exposure and ambient-light changes between captures.
-    threshold = np.percentile(brightness, self.BRIGHTNESS_PERCENTILE)
-    mask = np.where(brightness >= threshold, 255, 0).astype(np.uint8)
-
-    # Remove isolated bright pixels and close small gaps inside bright regions.
-    kernel = np.ones((3, 3), dtype=np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-    component_count, labels, stats, _ = cv2.connectedComponentsWithStats(mask)
-
-    frame_area = frame.shape[0] * frame.shape[1]
-    max_blob_area = frame_area * self.MAX_BLOB_AREA_RATIO
-    candidates = []
-
-    for label in range(1, component_count):
-      x = stats[label, cv2.CC_STAT_LEFT]
-      y = stats[label, cv2.CC_STAT_TOP]
-      width = stats[label, cv2.CC_STAT_WIDTH]
-      height = stats[label, cv2.CC_STAT_HEIGHT]
-      area = stats[label, cv2.CC_STAT_AREA]
-
-      # Reject noise and large bright surfaces that cannot be the LED.
-      if area < self.MIN_BLOB_AREA or area > max_blob_area:
-        continue
-
-      component_mask = labels == label
-      # Prefer components that are both bright and large enough to be stable.
-      mean_brightness = float(np.mean(brightness[component_mask]))
-      score = area * mean_brightness
-
-      candidates.append((score, x, y, width, height))
-
-    if not candidates:
-      raise RuntimeError('Unable to detect WS2812 bright region.')
-
-    _, x, y, width, height = max(candidates, key=lambda candidate: candidate[0])
-
-    # Add context around the detected component while keeping ROI inside the frame.
-    x1 = max(0, x - self.ROI_PADDING)
-    y1 = max(0, y - self.ROI_PADDING)
-    x2 = min(frame.shape[1], x + width + self.ROI_PADDING)
-    y2 = min(frame.shape[0], y + height + self.ROI_PADDING)
-
-    return x1, y1, x2 - x1, y2 - y1
-
-  def resolve_roi(self, frame: np.ndarray) -> tuple[int, int, int, int]:
-    # Dynamic detection is preferred; the calibrated ROI keeps diagnostics
-    # available when the LED is off or the bright-region detector cannot lock on.
-    try:
-      roi = self.detect_roi(frame)
-      self._roi_source = 'dynamic'
-
-      return roi
-    except RuntimeError:
-      self._roi_source = 'fallback'
-
-      return self._validated_fallback_roi(frame)
-
-  @property
-  def roi_source(self) -> str:
-    return self._roi_source
-
   def get_roi(self, frame: np.ndarray) -> np.ndarray:
-    x, y, width, height = self.resolve_roi(frame)
-    roi = frame[y:y + height, x:x + width]
+    """Return the fixed lamp ROI from the frame."""
+    x, y, width, height = self._validated_roi(frame)
 
-    if roi.size == 0:
-      raise RuntimeError(
-        f'Camera ROI is empty. ROI source: {self.roi_source}, '
-        f'ROI: x={x}, y={y}, width={width}, height={height}'
-      )
-
-    return roi
+    return frame[
+      y : y + height,
+      x : x + width,
+    ]
 
   def measure_color(self, roi: np.ndarray) -> tuple[int, int, int]:
+    """Measure the median HSV color inside the lamp ROI."""
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
     saturation = hsv[:, :, 1]
     value = hsv[:, :, 2]
-    # Ignore dark/background pixels and low-saturation reflections.
-    mask = (saturation >= 100) & (value >= 80)
+
+    # Ignore dark background pixels, weak reflections,
+    # and heavily clipped pixels in the LED center.
+    mask = (saturation >= 100) & (value >= 80) & (value <= 245)
+
     pixels = hsv[mask]
 
     if len(pixels) == 0:
-      raise RuntimeError('No colored LED pixels found inside camera ROI.')
+      raise RuntimeError('No valid color pixels were found inside camera ROI.')
 
-    # Median HSV is less sensitive to glare and individual overexposed pixels.
     median_hue = int(np.median(pixels[:, 0]))
+
     median_saturation = int(np.median(pixels[:, 1]))
+
     median_value = int(np.median(pixels[:, 2]))
 
     return median_hue, median_saturation, median_value
 
   def measure_roi_color(self, frame: np.ndarray) -> tuple[int, int, int]:
-    return self.measure_color(self.get_roi(frame))
+    """Measure HSV color of the lamp in a full camera frame."""
+    roi = self.get_roi(frame)
 
-  def save_debug_image(self, frame: np.ndarray, path: str | Path) -> None:
-    # Annotate the exact ROI used by color detection so failures can be inspected.
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    return self.measure_color(roi)
 
-    debug_frame = frame.copy()
-    x, y, width, height = self.resolve_roi(frame)
+  def detect_color(self, frame: np.ndarray) -> str:
+    """Return the calibrated color name matching the camera frame."""
+    actual_h, actual_s, actual_v = self.measure_roi_color(frame)
+
+    matches = []
+
+    for color, reference in self.COLOR_REFERENCES.items():
+      expected_h, expected_s, expected_v = reference
+
+      hue_difference = self._hue_distance(actual_h, expected_h)
+
+      saturation_difference = abs(actual_s - expected_s)
+
+      value_difference = abs(actual_v - expected_v)
+
+      if (
+        hue_difference <= self.COLOR_TOLERANCE['h']
+        and saturation_difference <= self.COLOR_TOLERANCE['s']
+        and value_difference <= self.COLOR_TOLERANCE['v']
+      ):
+        # Use the total HSV distance when more than one
+        # reference happens to fall inside the tolerance.
+        score = hue_difference + saturation_difference + value_difference
+
+        matches.append((score, color))
+
+    if not matches:
+      raise RuntimeError(
+        'Unable to match measured color '
+        f'HSV({actual_h}, {actual_s}, {actual_v}) '
+        'to any calibrated lamp color.'
+      )
+
+    _, color = min(matches, key=lambda match: match[0])
+
+    return color
+
+  def is_color(self, expected: str) -> bool:
+    """Check whether the physical lamp matches the expected color."""
+    if expected not in self.COLOR_REFERENCES:
+      raise ValueError(f'Unsupported camera color: {expected}')
+
+    try:
+      actual = self.detect_color(self.capture())
+    except RuntimeError:
+      return False
+
+    return actual == expected
+  
+  def wait_for_color(
+    self,
+    expected: str,
+    timeout: float = 2,
+    interval: float = 0.2,
+  ) -> None:
+    """Wait until the physical lamp reaches the expected color."""
+    if expected not in self.COLOR_REFERENCES:
+      raise ValueError(
+        f'Unsupported camera color: {expected}'
+      )
+
+    expected_hsv = self.COLOR_REFERENCES[expected]
+    actual_hsv = None
+
+    def color_matches() -> bool:
+      nonlocal actual_hsv
+
+      frame = self.capture()
+      actual_hsv = self.measure_roi_color(frame)
+
+      actual_h, actual_s, actual_v = actual_hsv
+      expected_h, expected_s, expected_v = expected_hsv
+
+      return (
+        self._hue_distance(actual_h, expected_h)
+        <= self.COLOR_TOLERANCE['h']
+        and abs(actual_s - expected_s)
+        <= self.COLOR_TOLERANCE['s']
+        and abs(actual_v - expected_v)
+        <= self.COLOR_TOLERANCE['v']
+      )
+
+    wait_for_condition(
+      color_matches,
+      timeout=timeout,
+      interval=interval,
+      error_message=lambda: (
+        f'Lamp did not become {expected}. '
+        f'Expected HSV: {expected_hsv}, '
+        f'actual HSV: {actual_hsv}.'
+      ),
+    )
+
+  def save_debug_image(self, frame: np.ndarray, path: str) -> None:
+    """Save the full camera frame with the fixed ROI marked."""
+    output = frame.copy()
+
+    x, y, width, height = self._validated_roi(frame)
 
     cv2.rectangle(
-      debug_frame,
+      output,
       (x, y),
       (x + width, y + height),
       (255, 255, 255),
@@ -180,75 +212,57 @@ class CameraController:
     )
 
     cv2.putText(
-      debug_frame,
-      f'ROI: {self.roi_source}',
+      output,
+      'ROI: fixed',
       (x, max(20, y - 10)),
       cv2.FONT_HERSHEY_SIMPLEX,
       0.6,
       (255, 255, 255),
       2,
+      cv2.LINE_AA,
     )
 
-    cv2.imwrite(str(path), debug_frame)
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-  def save_roi(self, frame: np.ndarray, path: str | Path) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if not cv2.imwrite(str(output_path), output):
+      raise RuntimeError(f'Failed to save debug image: {output_path}')
 
-    cv2.imwrite(str(path), self.get_roi(frame))
+  def save_roi(self, frame: np.ndarray, path: str) -> None:
+    """Save only the lamp ROI as a separate artifact."""
+    roi = self.get_roi(frame)
 
-  def detect_color(self, frame: np.ndarray) -> str:
-    actual_h, actual_s, actual_v = self.measure_roi_color(frame)
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    for color, reference in self.COLOR_REFERENCES.items():
-      expected_h, expected_s, expected_v = reference
+    if not cv2.imwrite(str(output_path), roi):
+      raise RuntimeError(f'Failed to save ROI image: {output_path}')
 
-      # Hue is circular in OpenCV HSV, so 179 and 0 are neighboring values.
-      hue_diff = self._hue_distance(actual_h, expected_h)
-      saturation_diff = abs(actual_s - expected_s)
-      value_diff = abs(actual_v - expected_v)
+  def _validated_roi(self, frame: np.ndarray) -> tuple[int, int, int, int]:
+    """Validate that the configured ROI fits inside the frame."""
+    x, y, width, height = self.ROI
 
-      if (
-        hue_diff <= self.COLOR_TOLERANCE['h']
-        and saturation_diff <= self.COLOR_TOLERANCE['s']
-        and value_diff <= self.COLOR_TOLERANCE['v']
-      ):
-        return color
+    frame_height, frame_width = frame.shape[:2]
 
-    raise RuntimeError(
-      f'Unknown WS2812 color: H={actual_h}, S={actual_s}, V={actual_v}. '
-      f'ROI source: {self.roi_source}'
-    )
-
-  def is_color(self, expected_color: str) -> bool:
-    # Polling helper: an unreadable/unknown color means the expected color
-    # has not been reached yet, not that the polling loop itself should fail.
-    try:
-      return self.detect_color(self.capture()) == expected_color
-    except RuntimeError:
-      return False
-
-  def _validated_fallback_roi(self, frame: np.ndarray) -> tuple[int, int, int, int]:
-    x, y, width, height = self.FALLBACK_ROI
-
-    if x >= frame.shape[1] or y >= frame.shape[0]:
+    if (
+      x < 0
+      or y < 0
+      or width <= 0
+      or height <= 0
+      or x + width > frame_width
+      or y + height > frame_height
+    ):
       raise RuntimeError(
-        f'Fallback ROI is outside camera frame: x={x}, y={y}, '
-        f'width={width}, height={height}'
+        'Configured camera ROI is outside the captured frame: '
+        f'ROI={self.ROI}, '
+        f'frame={frame_width}x{frame_height}'
       )
-
-    # Clip the configured ROI when camera resolution changes slightly.
-    width = min(width, frame.shape[1] - x)
-    height = min(height, frame.shape[0] - y)
-
-    if width <= 0 or height <= 0:
-      raise RuntimeError('Fallback camera ROI is empty.')
 
     return x, y, width, height
 
   @staticmethod
-  def _hue_distance(actual: int, expected: int) -> int:
-    # OpenCV Hue wraps after 179, therefore use the shortest circular distance.
-    difference = abs(actual - expected)
+  def _hue_distance(first: int, second: int) -> int:
+    """Calculate circular OpenCV hue distance."""
+    difference = abs(first - second)
 
     return min(difference, 180 - difference)

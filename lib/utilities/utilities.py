@@ -10,10 +10,8 @@ def wait_for_condition(
   condition: bool = True,
   timeout: float = 2,
   interval: float = 0.2,
-  error_message: str | None = None,
+  error_message: str | Callable[[], str] | None = None,
 ) -> None:
-  error_message = error_message or (f'Callback result is not equal to {condition} after {timeout}s')
-
   deadline = time.monotonic() + timeout
 
   while time.monotonic() < deadline:
@@ -22,7 +20,13 @@ def wait_for_condition(
 
     time.sleep(interval)
 
-  raise TimeoutError(error_message)
+  if callable(error_message):
+    error_message = error_message()
+
+  raise TimeoutError(
+    error_message
+    or f'Callback result is not equal to {condition} after {timeout}s'
+  )
 
 
 # Supported USB-to-serial adapters used to identify the connected DUT.

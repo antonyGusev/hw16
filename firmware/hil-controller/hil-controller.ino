@@ -461,17 +461,25 @@ bool initCamera() {
       sensor->set_vflip(sensor, 1);
     }
 
-    // Disable automatic exposure/gain.
+    // Use fully fixed camera settings.
+    // Automatic corrections make color measurements unstable between captures.
+
+    // Disable automatic gain and exposure.
     sensor->set_gain_ctrl(sensor, 0);
     sensor->set_exposure_ctrl(sensor, 0);
 
-    // Low fixed gain.
+    // Disable automatic white balance.
+    // This is critical for repeatable RGB/HSV measurements.
+    sensor->set_whitebal(sensor, 0);
+    sensor->set_awb_gain(sensor, 0);
+
+    // Minimum sensor gain.
     sensor->set_agc_gain(sensor, 0);
 
-    // Short exposure.
-    sensor->set_aec_value(sensor, 100);
+    // Shorter exposure to avoid clipping the WS2812 at close distance.
+    sensor->set_aec_value(sensor, 30);
 
-    // Keep color processing neutral.
+    // Keep image processing neutral.
     sensor->set_brightness(sensor, 0);
     sensor->set_contrast(sensor, 0);
     sensor->set_saturation(sensor, 0);

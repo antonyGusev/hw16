@@ -1,4 +1,4 @@
-# station_WiFi Smart Lamp + OTA --- Test Cases (HIL Updated)
+# station_WiFi Smart Lamp + OTA --- Test Cases
 
 ## Wi-Fi
 
@@ -25,289 +25,49 @@
 
 ## Smart Lamp
 
-  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  TC ID         Requirement   Title          Preconditions   Steps                                   Expected Result                                 Automation   Automation Notes     Status
-  ------------- ------------- -------------- --------------- --------------------------------------- ----------------------------------------------- ------------ -------------------- --------
-  TC-LAMP-001   FR-L1         Lamp on and    Device booted;  1\. Send `lamp on`.`<br>`{=html}2. Send Logs `[LAMP] on` then `[LAMP] off`; physical    Automated    Fully automated:     Not Run
-                              off            UART available. `lamp off`.                             lamp follows commands.                                       UART command/state   
-                                                                                                                                                                  plus physical WS2812 
-                                                                                                                                                                  verification with    
-                                                                                                                                                                  OV3660 camera.       
-
-  TC-LAMP-002   FR-L1         Lamp is off    Lamp is on      1\. Send `reboot`.`<br>`{=html}2. Wait  Lamp is off after reboot regardless of          Automated    Status via UART;     Not Run
-                              after reboot   before reboot.  for boot.`<br>`{=html}3. Send           pre-reboot on/off state.                                     physical off can     
-                                                             `lamp status`.                                                                                       additionally be      
-                                                                                                                                                                  HIL-verified.        
-
-  TC-LAMP-003   FR-L2         Set each       Lamp on.        For each: red, green, blue, white,      Response reports exact specified RGB mapping    Automated    UART/state           Not Run
-                              supported                      yellow, purple, cyan:`<br>`{=html}1.    and status stores the same RGB values.                       validation.          
-                              named color                    Send                                                                                                                      
-                                                             `lamp color <name>`.`<br>`{=html}2.                                                                                       
-                                                             Check response and `lamp status`.                                                                                         
-
-  TC-LAMP-004   FR-L2         Reject unknown Lamp on; known  1\. Record current                      `error: unknown color 'orange'`; previous color Automated    UART only.           Not Run
-                              named color    color already   status.`<br>`{=html}2. Send             remains unchanged.                                                                
-                                             set.            `lamp color orange`.`<br>`{=html}3.                                                                                       
-                                                             Read status again.                                                                                                        
-
-  TC-LAMP-005   FR-L3         Set RGB        Lamp on.        Set `0 0 0`, `255 255 255`, and         Each valid RGB triplet is accepted and status   Automated    UART/state           Not Run
-                              boundary and                   `255 0 128`; check status after each.   matches exactly.                                             validation.          
-                              arbitrary                                                                                                                                                
-                              values                                                                                                                                                   
-
-  TC-LAMP-006   FR-L3         Reject RGB     Lamp on; known  Try values such as `300 0 0` and        `error: rgb values must be 0-255`; previous     Automated    UART only.           Not Run
-                              values outside RGB already     `-1 0 0`.                               color remains unchanged.                                                          
-                              0-255          set.                                                                                                                                      
-
-  TC-LAMP-007   FR-L4         Physical named Lamp on;        Set each supported named color and      Physical LED color corresponds to requested     Automated    Fully automatable    Not Run
-                              colors match   optical         observe/measure LED output.             named color.                                                 with fixed camera    
-                              requested      observation                                                                                                          ROI and calibrated   
-                              colors         available.                                                                                                           OV3660 color         
-                                                                                                                                                                  measurement. Color   
-                                                                                                                                                                  references are       
-                                                                                                                                                                  calibrated against   
-                                                                                                                                                                  the physical WS2812. 
-
-  TC-LAMP-008   FR-L5         Set brightness Lamp on.        Set brightness 0, 1, 50, 100 and query  `[LAMP] brightness set: N%`; status reports     Automated    UART/state           Not Run
-                              boundaries                     status after each.                      exact value.                                                 validation.          
-
-  TC-LAMP-009   FR-L5         Reject invalid Lamp on;        Send `lamp brightness 150`, then        Error `brightness must be 0-100`; brightness    Automated    UART only.           Not Run
-                              brightness     brightness 50%. `lamp brightness -5`; query status.     remains 50%.                                                                      
-
-  TC-LAMP-010   FR-L5         Brightness     Lamp on; known  For solid, blink, breathe and rainbow   Peak/steady physical brightness changes         Automated    Fully automatable    Not Run
-                              physically     color.          where supported, set two brightness     according to configured brightness in every                  with fixed-exposure  
-                              applies in all                 levels and measure output.              supported mode.                                              OV3660 and ROI       
-                              modes                                                                                                                               intensity            
-                                                                                                                                                                  measurement for      
-                                                                                                                                                                  physical brightness  
-                                                                                                                                                                  verification.        
-
-  TC-LAMP-011   FR-L6         Solid mode     Lamp on.        Set `lamp mode solid`; observe LED and  Log reports solid; LED remains continuously on  Automated    Fully automated:     Not Run
-                              behavior                       query status.                           at configured color/brightness; status mode is               UART state plus      
-                                                                                                     solid.                                                       continuous physical  
-                                                                                                                                                                  WS2812 output        
-                                                                                                                                                                  verified by camera.  
-
-  TC-LAMP-012   FR-L6         Blink mode     Lamp on.        Set `lamp mode blink`; measure several  LED alternates \~0.5 s on / \~0.5 s off (1 Hz)  Manual       Automatable with     Not Run
-                              timing                         cycles.                                 at configured brightness.                                    photodiode/light     
-                                                                                                                                                                  sensor + timestamped 
-                                                                                                                                                                  sampling.            
-
-  TC-LAMP-013   FR-L6         Breathe mode   Lamp on.        Set `lamp mode breathe`;                Brightness changes smoothly with \~3 s period;  Manual       Automatable with     Not Run
-                              timing                         observe/measure multiple cycles.        maximum equals configured brightness.                        photodiode/light     
-                                                                                                                                                                  sensor.              
-
-  TC-LAMP-014   FR-L6         Rainbow        Test firmware   On each version send                    1.3.0/1.4.0 return                              Automated    Requires             Not Run
-                              availability   1.3.0, 1.4.0    `lamp mode rainbow`.                    `mode 'rainbow' not implemented yet`; 1.5.0                  version-controlled   
-                              by firmware    and 1.5.0.                                              accepts rainbow.                                             OTA/flash setup.     
-                              version                                                                                                                                                  
-
-  TC-LAMP-015   FR-L6         Rainbow        Firmware 1.5.0; Set rainbow mode and observe/measure    Color changes smoothly around the color wheel   Manual       Automatable with RGB Not Run
-                              physical cycle lamp on.        one or more cycles.                     with \~5 s cycle and configured brightness.                  sensor/camera +      
-                              on 1.5.0                                                                                                                            timing analysis.     
-
-  TC-LAMP-016   FR-L6         Reject unknown Lamp on; known  Send `lamp mode disco`; query status.   `error: unknown mode 'disco'`; previous mode    Automated    UART only.           Not Run
-                              lamp mode      mode set.                                               remains unchanged.                                                                
-
-  TC-LAMP-017   FR-L7         Lamp auto-off  Lamp on.        1\. Send `lamp timer 5`.`<br>`{=html}2. Logs auto-off, then                             Automated    UART/timing;         Not Run
-                              timer expires                  Observe for \>5 s.`<br>`{=html}3. Query `[LAMP] timer expired, lamp off`; status is off              physical off can be  
-                                                             status.                                 and timer_s=0.                                               HIL-verified.        
-
-  TC-LAMP-018   FR-L7         Cancel active  Lamp on; timer  1\. Send `lamp timer 0` before          `[LAMP] timer cancelled`; lamp remains on and   Automated    UART/timing.         Not Run
-                              lamp timer     active.         expiry.`<br>`{=html}2. Wait beyond      timer_s=0.                                                                        
-                                                             original expiry.`<br>`{=html}3. Query                                                                                     
-                                                             status.                                                                                                                   
-
-  TC-LAMP-019   FR-L7         Reject invalid Lamp on.        Send timer 5000 and other out-of-range  `error: timer must be 1-3600 s (0 = cancel)`;   Automated    UART only.           Not Run
-                              timer values                   values.                                 no invalid timer starts.                                                          
-
-  TC-LAMP-020   FR-L7         Reject timer   Lamp off.       Send `lamp timer 5`.                    `error: lamp is off`; timer is not started.     Automated    UART only.           Not Run
-                              when lamp is                                                                                                                                             
-                              off                                                                                                                                                      
-
-  TC-LAMP-021   FR-L7         Timer is not   Lamp on; timer  1\. Start timer.`<br>`{=html}2. Reboot  Lamp is off after reboot and timer_s=0; old     Automated    UART/reboot.         Not Run
-                              preserved      active with     before expiry.`<br>`{=html}3. Query     timer does not resume.                                                            
-                              after reboot   enough          status.                                                                                                                   
-                                             remaining time.                                                                                                                           
-
-  TC-LAMP-022   FR-L8         Lamp status    Lamp configured Send `lamp status` and parse one-line   JSON contains lamp, color\[3\], brightness,     Automated    Direct JSON parsing. Not Run
-                              JSON schema    to known state. JSON.                                   mode, timer_s with values matching configured                                     
-                              and values                                                             logical state.                                                                    
-
-  TC-LAMP-023   FR-L9         Default lamp   NVS erased /    Boot and send `lamp status`.            Defaults are white, 50%, solid; lamp itself is  Automated    Requires controlled  Not Run
-                              settings on    clean device.                                           off after boot.                                              NVS erase.           
-                              clean device                                                                                                                                             
-
-  TC-LAMP-024   FR-L9         Lamp settings  Set non-default 1\. Change settings.`<br>`{=html}2.     Color, brightness and mode are restored from    Automated    UART/reboot.         Not Run
-                              survive reboot color,          Reboot.`<br>`{=html}3. Query status.    NVS; lamp remains off after reboot.                                               
-                                             brightness and                                                                                                                            
-                                             mode.                                                                                                                                     
-
-  TC-LAMP-025   FR-L10        Save and load  Firmware 1.5.0. 1\. Configure                           Scene save/load succeeds and restores saved     Automated    UART/state           Not Run
-                              scenes on                      color/brightness/mode.`<br>`{=html}2.   color, brightness and mode.                                  validation.          
-                              1.5.0                          Save scene 1.`<br>`{=html}3. Change                                                                                       
-                                                             settings.`<br>`{=html}4. Load scene                                                                                       
-                                                             1.`<br>`{=html}5. Query status.                                                                                           
-
-  TC-LAMP-026   FR-L10        Scene          Firmware 1.5.0; Send scene save 7 and scene load 2.     Out-of-range returns `scene must be 1-3`; empty Automated    UART only.           Not Run
-                              validation     scene 2 empty.                                          scene returns `scene 2 is empty`.                                                 
-                              errors on                                                                                                                                                
-                              1.5.0                                                                                                                                                    
-
-  TC-LAMP-027   FR-L10        Scenes         Firmware 1.3.0  Send `lamp scene save 1`.               `error: scenes not implemented yet`.            Automated    Version-controlled   Not Run
-                              unavailable    or 1.4.0.                                                                                                            test.                
-                              before 1.5.0                                                                                                                                             
-
-  TC-LAMP-028   FR-L10        Scenes survive Firmware 1.5.0; 1\. Reboot.`<br>`{=html}2. Load saved   Saved scene remains available and restores      Automated    UART/reboot.         Not Run
-                              reboot         scene saved.    scene.`<br>`{=html}3. Query status.     stored settings.                                                                  
-
-  TC-LAMP-029   FR-L11        Reject unknown Device booted.  Send `lamp blabla`.                     `error: unknown lamp command. See 'help'`.      Automated    UART only.           Not Run
-                              lamp command                                                                                                                                             
-
-  TC-LAMP-030   FR-W6 / Smart Lamp overrides Lamp on; known  1\. Issue `led on`, `led off`,          While lamp is on, its output is not altered by  Automated    Fully automated:     Not Run
-                Lamp priority Wi-Fi and led  lamp            `led auto` and change Wi-Fi state while Wi-Fi indication or `led ...`. After lamp off,               logical priority via 
-                              commands while color/mode;     lamp is on.`<br>`{=html}2. Query lamp   LED returns to Wi-Fi indication.                             UART plus physical   
-                              on             Wi-Fi state     status/observe LED.`<br>`{=html}3. Turn                                                              WS2812 result        
-                                             known.          lamp off.                                                                                            verified by camera.  
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-
-                                                                                                                                                                                       
-  ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| TC ID       | Requirement                 | Title                                           | Preconditions                                                                              | Steps                                                                                                                                             | Expected Result                                                                                                                  | Automation | Automation Notes                                                  | Status  |
+| ----------- | --------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------- | ------- |
+| TC-LAMP-001 | FR-L1                       | Turn lamp on and off                            | Device booted; UART available.                                                             | 1. Send `lamp on`. <br>2. Send `lamp status`. <br>3. Verify physical LED is controlled by lamp. <br>4. Send `lamp off`. <br>5. Send `lamp status`. | `lamp on` returns `[LAMP] on` and status reports `"lamp":"on"`; `lamp off` returns `[LAMP] off` and status reports `"lamp":"off"`. | Automated  | UART + status; physical LED behavior is HIL-verified.              | Not Run |
+| TC-LAMP-002 | FR-L1                       | Lamp is always off after reboot                 | Lamp is on before reboot.                                                                  | 1. Reboot device. <br>2. Wait for boot. <br>3. Send `lamp status`.                                                                                | Status reports `"lamp":"off"` after reboot.                                                                                      | Automated  | UART + reboot fixture.                                            | Not Run |
+| TC-LAMP-003 | FR-L2                       | Set supported named colors                      | Lamp is on.                                                                                | For each `red`, `green`, `blue`, `white`, `yellow`, `purple`, `cyan`: <br>1. Send `lamp color <name>`. <br>2. Read `lamp status`.                 | Command returns `[LAMP] color set: <name> (r,g,b)` with the specified mapping; status contains the same RGB values.              | Automated  | Parameterized UART/status test.                                   | Not Run |
+| TC-LAMP-004 | FR-L2                       | Reject unknown named color                      | Lamp is on; current color is known.                                                        | 1. Record `lamp status`. <br>2. Send `lamp color orange`. <br>3. Read status again.                                                               | Returns `error: unknown color 'orange'`; previous color remains unchanged.                                                       | Automated  | UART; validates state is not modified.                            | Not Run |
+| TC-LAMP-005 | FR-L3                       | Set arbitrary RGB color                         | Lamp is on.                                                                                | 1. Send `lamp color 255 0 128`. <br>2. Read `lamp status`.                                                                                        | Returns `[LAMP] color set: (255,0,128)`; status contains `[255,0,128]`.                                                          | Automated  | UART/status validation.                                           | Not Run |
+| TC-LAMP-006 | FR-L3                       | Accept RGB boundary values                      | Lamp is on.                                                                                | 1. Set `lamp color 0 0 0`. <br>2. Verify status. <br>3. Set `lamp color 255 255 255`. <br>4. Verify status.                                       | Both boundary RGB triplets are accepted and stored exactly.                                                                      | Automated  | Parameterized UART/status test.                                   | Not Run |
+| TC-LAMP-007 | FR-L3                       | Reject RGB values outside 0-255                 | Lamp is on; current color is known.                                                        | 1. Record current status. <br>2. Send `lamp color -1 0 0`, `256 0 0`, `0 -1 0`, `0 256 0`, `0 0 -1`, and `0 0 256`. <br>3. Read status after each command. | Each command returns `error: rgb values must be 0-255`; color remains unchanged after every rejected command.                    | Automated  | Parameterized negative UART/status test for each RGB component.   | Not Run |
+| TC-LAMP-008 | FR-L4                       | Physical LED matches named color                | Lamp is on; HIL camera/color detector available.                                           | For each supported named color: <br>1. Set color. <br>2. Observe WS2812 LED.                                                                      | Physical LED color corresponds to the selected named color.                                                                      | Automated  | HIL camera/color detection.                                       | Not Run |
+| TC-LAMP-009 | FR-L4                       | Physical LED matches arbitrary RGB color        | Lamp is on; HIL camera/color detector available.                                           | 1. Send `lamp color 255 0 128`. <br>2. Observe WS2812 LED.                                                                                        | Physical LED output corresponds to the configured RGB color within detector tolerance.                                           | Automated  | HIL camera/color detection.                                       | Not Run |
+| TC-LAMP-010 | FR-L5                       | Set brightness                                  | Lamp is on.                                                                                | 1. Send `lamp brightness 30`. <br>2. Read `lamp status`.                                                                                          | Returns `[LAMP] brightness set: 30%`; status reports `"brightness":30`.                                                          | Automated  | UART/status validation.                                           | Not Run |
+| TC-LAMP-011 | FR-L5                       | Accept brightness boundary values               | Lamp is on.                                                                                | 1. Set brightness to `0`. <br>2. Verify status. <br>3. Set brightness to `100`. <br>4. Verify status.                                             | Both `0%` and `100%` are accepted and reported correctly.                                                                        | Automated  | Parameterized UART/status test.                                   | Not Run |
+| TC-LAMP-012 | FR-L5                       | Reject brightness outside 0-100                 | Lamp is on; current brightness is known.                                                   | 1. Record status. <br>2. Send `lamp brightness -5`. <br>3. Send `lamp brightness 150`. <br>4. Read status after each.                             | Each invalid command returns `error: brightness must be 0-100`; brightness remains unchanged.                                    | Automated  | Parameterized negative UART/status test.                          | Not Run |
+| TC-LAMP-013 | FR-L5                       | Brightness applies in all modes                 | Lamp is on; HIL camera/light measurement available.                                        | 1. Set a non-default brightness. <br>2. Run `solid`, `blink`, `breathe`, and `rainbow` where supported. <br>3. Measure intensity in the active/maximum phase of each mode. | `solid` intensity matches configured brightness; `blink` ON phase matches configured brightness; `breathe` maximum matches configured brightness; `rainbow` is rendered at the configured brightness. | Automated  | HIL optical measurement with agreed sensor tolerance; rainbow only on FW >= 1.5.0. | Not Run |
+| TC-LAMP-014 | FR-L6                       | Set solid mode                                  | Lamp is on.                                                                                | 1. Send `lamp mode solid`. <br>2. Read status.                                                                                                    | Returns `[LAMP] mode set: solid`; status reports `"mode":"solid"`; LED is steady.                                                | Automated  | UART/status + HIL observation.                                    | Not Run |
+| TC-LAMP-015 | FR-L6                       | Blink mode timing is 1 Hz                       | Lamp is on; HIL camera/light sensor available.                                             | 1. Send `lamp mode blink`. <br>2. Observe and measure multiple ON/OFF cycles.                                                                      | Returns `[LAMP] mode set: blink`; measured ON and OFF durations are each approximately 0.5 s and satisfy the agreed timing tolerance. | Automated  | HIL timing measurement; acceptance tolerance must be defined by the test environment/specification. | Not Run |
+| TC-LAMP-016 | FR-L6                       | Breathe mode period is about 3 s                | Lamp is on; HIL camera/light sensor available.                                             | 1. Send `lamp mode breathe`. <br>2. Observe and measure multiple full pulse cycles.                                                                | Returns `[LAMP] mode set: breathe`; LED pulses smoothly and measured period is approximately 3 s within the agreed timing tolerance. | Automated  | HIL timing/intensity measurement; tolerance must be defined by the test environment/specification. | Not Run |
+| TC-LAMP-017 | FR-L6                       | Rainbow mode works on FW 1.5.0+                 | Firmware version is 1.5.0 or newer; lamp is on; HIL camera available.                      | 1. Send `lamp mode rainbow`. <br>2. Observe and measure at least one full color cycle.                                                             | Returns `[LAMP] mode set: rainbow`; colors change smoothly around the spectrum and full-cycle duration is approximately 5 s within the agreed timing tolerance. | Automated  | Version-gated HIL timing/color test; tolerance must be defined by the test environment/specification. | Not Run |
+| TC-LAMP-018 | FR-L6                       | Rainbow mode is rejected on FW 1.3.0/1.4.0      | Firmware version is 1.3.0 or 1.4.0.                                                        | 1. Send `lamp mode rainbow`.                                                                                                                      | Returns `error: mode 'rainbow' not implemented yet`.                                                                             | Automated  | Version-gated UART negative test.                                 | Not Run |
+| TC-LAMP-019 | FR-L6                       | Reject unknown lamp mode                        | Lamp is on; current mode is known.                                                         | 1. Record status. <br>2. Send `lamp mode disco`. <br>3. Read status.                                                                              | Returns `error: unknown mode 'disco'`; previous mode remains unchanged.                                                          | Automated  | UART/status validation.                                           | Not Run |
+| TC-LAMP-020 | FR-L7                       | Auto-off timer expires                          | Lamp is on.                                                                                | 1. Send `lamp timer 5`. <br>2. Wait for expiration. <br>3. Read `lamp status`.                                                                    | Returns `[LAMP] auto-off in 5 s`, then `[LAMP] timer expired, lamp off`; status reports `"lamp":"off"` with `timer_s:0`.          | Automated  | UART + timed status polling. Physical LED restoration is covered by TC-LAMP-026. | Not Run |
+| TC-LAMP-021 | FR-L7                       | Cancel active timer                             | Lamp is on with an active timer.                                                           | 1. Send `lamp timer 0`. <br>2. Read status. <br>3. Wait past the original expiration time.                                                        | Returns `[LAMP] timer cancelled`; `timer_s` becomes `0`; lamp does not auto-off from the cancelled timer.                        | Automated  | UART/status + timing.                                             | Not Run |
+| TC-LAMP-022 | FR-L7                       | Accept timer boundary values                    | Lamp is on.                                                                                | 1. Send `lamp timer 1`. <br>2. Verify acceptance. <br>3. Turn lamp on again if needed. <br>4. Send `lamp timer 3600`.                             | Both boundary values are accepted with `[LAMP] auto-off in N s`.                                                                 | Automated  | Parameterized UART test; cancel 3600 s timer after validation.    | Not Run |
+| TC-LAMP-023 | FR-L7                       | Reject invalid timer values                     | Lamp is on; no timer active.                                                               | 1. Send `lamp timer -1`, `lamp timer 3601`, and `lamp timer 5000`. <br>2. Read status after each command.                                         | Each command returns `error: timer must be 1-3600 s (0 = cancel)`; `timer_s` remains `0` and no invalid timer starts.            | Automated  | Parameterized negative UART/status test with boundary-invalid values. | Not Run |
+| TC-LAMP-024 | FR-L7                       | Reject timer when lamp is off                   | Lamp is off.                                                                               | 1. Send `lamp timer 5`.                                                                                                                           | Returns `error: lamp is off`; timer is not started.                                                                              | Automated  | UART negative test.                                               | Not Run |
+| TC-LAMP-025 | FR-L7                       | Timer does not survive reboot                   | Lamp is on with an active timer.                                                           | 1. Start a timer long enough to reboot before expiration. <br>2. Wait briefly. <br>3. Reboot before it expires. <br>4. Read `lamp status`. <br>5. Send `lamp on`. <br>6. Wait longer than the timer's remaining pre-reboot duration. <br>7. Read `lamp status` and monitor UART. | After reboot lamp is off and `timer_s` is `0`; after turning the lamp on again it remains on past the old expiration point and no stale `[LAMP] timer expired` event occurs. | Automated  | UART + reboot fixture + timed observation.                        | Not Run |
+| TC-LAMP-026 | FR-L7 / FR-W6               | Wi-Fi indication returns after timer expiration | Lamp is on with a short timer; Wi-Fi state is known; HIL camera available.                 | 1. Start short timer. <br>2. Wait for expiration. <br>3. Observe WS2812 LED.                                                                      | After lamp auto-off, WS2812 returns to the correct Wi-Fi indication for the current Wi-Fi state.                                 | Automated  | HIL camera + UART/status.                                         | Not Run |
+| TC-LAMP-027 | FR-L8                       | Lamp status returns one valid JSON line         | Device booted; UART available.                                                             | 1. Send `lamp status`. <br>2. Capture the complete command response. <br>3. Verify exactly one response line is returned. <br>4. Parse that line as JSON. | Exactly one response line containing one valid JSON object is returned with keys `lamp`, `color`, `brightness`, `mode`, and `timer_s` using expected data types. | Automated  | UART framing + JSON parsing/schema assertions.                    | Not Run |
+| TC-LAMP-028 | FR-L8                       | Lamp status reflects configured state           | Lamp is on.                                                                                | 1. Set known color, brightness, and mode. <br>2. Start `lamp timer 10`. <br>3. Send `lamp status` and record `timer_s`. <br>4. Wait about 2 s. <br>5. Send `lamp status` again. | JSON values match the configured logical state; first `timer_s` is close to 10, second value is lower by approximately the elapsed time, and both remain consistent with the active timer. | Automated  | UART/status validation with timer countdown tolerance.            | Not Run |
+| TC-LAMP-029 | FR-L8                       | Lamp status matches physical LED behavior       | Lamp is on; HIL camera/light sensor available.                                             | 1. Configure a known state. <br>2. Read `lamp status`. <br>3. Observe physical LED.                                                               | JSON state corresponds to what the LED is physically doing.                                                                      | Automated  | UART + HIL correlation.                                           | Not Run |
+| TC-LAMP-030 | FR-L9                       | Default settings on clean device                | Clean freshly flashed device; no lamp settings in NVS.                                     | 1. Send `lamp status`.                                                                                                                            | Defaults are color `white` = `[255,255,255]`, brightness `50`, mode `solid`; lamp itself is off.                                 | Automated  | UART/status; requires clean device at test-run start.             | Not Run |
+| TC-LAMP-031 | FR-L9                       | Each lamp setting survives reboot               | Device is available for reboot testing.                                                    | For each setting independently: <br>1. Set one non-default value (`color`, `brightness`, or `mode`) while keeping the others known. <br>2. Reboot immediately after the change. <br>3. Read `lamp status`. <br>4. Send `lamp on`. | Lamp is off immediately after every reboot; the just-changed setting is restored from NVS and applied correctly. Color, brightness, and mode persistence are each verified independently. | Automated  | Parameterized UART + reboot fixture; proves immediate per-setting NVS persistence. | Not Run |
+| TC-LAMP-032 | FR-L9                       | Lamp settings survive OTA update                | Device has non-default color, brightness, and mode; defined source and target FW versions are available for OTA. | 1. Record source FW version and lamp settings. <br>2. Perform OTA to the defined target FW version. <br>3. Read status after boot. <br>4. Turn lamp on. | Saved color, brightness, and mode survive OTA and are applied after `lamp on`; lamp is off immediately after reboot.             | Automated  | OTA regression suite + UART; source→target FW pair must be explicit in test data. | Not Run |
+| TC-LAMP-033 | FR-L10                      | Save and load scenes 1-3 on FW 1.5.0+           | Firmware version is 1.5.0 or newer; lamp settings are known.                               | For each scene `1`, `2`, and `3`: <br>1. Set known color/brightness/mode. <br>2. Send `lamp scene save <N>`. <br>3. Change settings. <br>4. Send `lamp scene load <N>`. <br>5. Read status. | For every scene slot, returns `[LAMP] scene N saved` and `[LAMP] scene N loaded`; the saved color/brightness/mode are restored exactly. | Automated  | Parameterized UART/status test for scene IDs 1, 2, and 3.         | Not Run |
+| TC-LAMP-034 | FR-L10                      | Reject invalid scene number on FW 1.5.0+        | Firmware version is 1.5.0 or newer; at least one valid scene contains known settings.      | 1. Record the known valid scene contents/state. <br>2. Send `lamp scene save 0`, `save 4`, `load 0`, and `load 4`. <br>3. Re-load the known valid scene and read status. | Each invalid command returns `error: scene must be 1-3`; the known valid scene remains unchanged and still restores its original settings. | Automated  | Parameterized UART/status negative test using boundary-invalid scene IDs. | Not Run |
+| TC-LAMP-035 | FR-L10                      | Reject loading empty scene on FW 1.5.0+         | Firmware version is 1.5.0 or newer; selected scene slot is empty.                          | 1. Set and record known current color/brightness/mode. <br>2. Send `lamp scene load 2`. <br>3. Read `lamp status`.                                | Returns `error: scene 2 is empty`; color, brightness, and mode remain exactly unchanged.                                         | Automated  | UART/status negative test with before/after state comparison.     | Not Run |
+| TC-LAMP-036 | FR-L10                      | Scenes survive reboot on FW 1.5.0+              | Firmware version is 1.5.0 or newer; scene 1 contains known settings.                       | 1. Reboot device. <br>2. Send `lamp scene load 1`. <br>3. Read status.                                                                            | Scene remains stored in NVS and loads the previously saved color/brightness/mode.                                                | Automated  | UART + reboot fixture.                                            | Not Run |
+| TC-LAMP-037 | FR-L10                      | Scenes survive OTA on FW 1.5.0+                 | Source firmware is 1.5.0 or newer; scene 1 contains known settings; defined newer target FW is available. | 1. Record source FW and scene contents. <br>2. Perform OTA to the newer target FW. <br>3. Send `lamp scene load 1`. <br>4. Read status.            | Saved scene survives OTA and restores the expected color/brightness/mode.                                                        | Automated  | OTA regression suite + UART; use a source FW where scenes already exist. | Not Run |
+| TC-LAMP-038 | FR-L10                      | Scene commands are rejected on FW 1.3.0/1.4.0   | Firmware version is 1.3.0 or 1.4.0.                                                        | For each command `lamp scene save 1` and `lamp scene load 1`: <br>1. Send the command. <br>2. Verify the response.                               | Each command independently returns `error: scenes not implemented yet`.                                                          | Automated  | Version-gated parameterized UART negative test.                   | Not Run |
+| TC-LAMP-039 | FR-L11                      | Reject unknown lamp command                     | Device booted; UART available.                                                             | 1. Send `lamp blabla`.                                                                                                                            | Returns `error: unknown lamp command. See 'help'`.                                                                               | Automated  | UART negative test.                                               | Not Run |
+| TC-LAMP-040 | FR-W6 / Smart Lamp priority | Lamp overrides Wi-Fi and led commands while on  | Lamp is on with known visible output; Wi-Fi state is known.                                | 1. Set lamp to a known visible color/brightness/mode. <br>2. Trigger a Wi-Fi state change. <br>3. Verify physical LED and lamp status remain unchanged. <br>4. Issue a supported `led ...` command. <br>5. Verify physical LED and lamp status remain unchanged. | While lamp is on, neither Wi-Fi indication changes nor direct `led ...` commands alter the lamp-controlled LED output or lamp state. | Automated  | UART + HIL physical LED verification.                             | Not Run |
+| TC-LAMP-041 | FR-W6 / Smart Lamp priority | Wi-Fi indication is restored after lamp off     | Lamp is on; current Wi-Fi state is known; HIL camera available.                            | 1. Send `lamp off`. <br>2. Read `lamp status`. <br>3. Observe WS2812 LED.                                                                         | Returns `[LAMP] off`; status reports `"lamp":"off"`; lamp releases the LED and the correct Wi-Fi indication for the current Wi-Fi state becomes visible. | Automated  | UART/status + HIL physical LED verification.                      | Not Run |
 
 ## OTA
 
