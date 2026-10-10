@@ -1,53 +1,39 @@
+from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
 
 import cv2
 import numpy as np
 import requests
 
 from lib import wait_for_condition
+from test_data import CAMERA_ROI
+
+RGB_HUE_TOLERANCE = 20
+WHITE_SATURATION_MAX = 120
+WHITE_VALUE_MIN = 180
+
+
+@dataclass
+class CameraEndpoints:
+  capture_url: str
+  stream_url: str
 
 
 class CameraController:
-  # Calibrated HSV values for each supported lamp color.
-  # These values are specific to the current camera position,
-  # exposure settings, lamp brightness, and physical test stand.
-  COLOR_REFERENCES: ClassVar[dict[str, tuple[int, int, int]]] = {
-    'red': (7, 244, 160),
-    'green': (62, 252, 146),
-    'blue': (105, 255, 145),
-    'yellow': (36, 195, 153),
-    'purple': (157, 147, 143),
-    'cyan': (85, 249, 149),
-    'white': (94, 104, 229),
-  }
-
-  # Maximum allowed difference between the measured HSV value
-  # and the calibrated reference value.
-  COLOR_TOLERANCE: ClassVar[dict[str, int]] = {
-    'h': 5,
-    's': 20,
-    'v': 20,
-  }
-
-  # Fixed ROI containing the WS2812 LED.
-  # Format: (x, y, width, height).
-  ROI = (280, 355, 75, 75)
-
-  def __init__(self, capture_url: str, timeout: float = 5):
-    # Full camera capture endpoint, for example:
-    # http://192.168.68.104/capture
-    self.capture_url = capture_url
+  def __init__(self, endpoints: CameraEndpoints, timeout: float = 5):
+    # Keep a reference to the same mutable endpoints object used by HILDriver.
+    # If HILDriver refreshes the URLs after reconnect, CameraController
+    # automatically starts using the new endpoints.
+    self._endpoints = endpoints
     self.timeout = timeout
 
   def capture(self) -> np.ndarray:
     """Capture a single frame from the HIL camera."""
-    response = requests.get(self.capture_url, timeout=self.timeout)
+    response = requests.get(self._endpoints.capture_url, timeout=self.timeout)
 
     response.raise_for_status()
 
     image = np.frombuffer(response.content, dtype=np.uint8)
-
     frame = cv2.imdecode(image, cv2.IMREAD_COLOR)
 
     if frame is None:
@@ -55,12 +41,21 @@ class CameraController:
 
     return frame
 
+  def open_stream(self) -> cv2.VideoCapture:
+    """Open the current MJPEG stream from the HIL camera."""
+    stream = cv2.VideoCapture(self._endpoints.stream_url)
+
+    if not stream.isOpened():
+      stream.release()
+      raise RuntimeError(f'Failed to open camera stream: {self._endpoints.stream_url}')
+
+    return stream
+
   def capture_artifacts(self, name: str) -> np.ndarray:
     """Capture a frame and save debug and ROI images."""
     frame = self.capture()
 
     self.save_debug_image(frame, f'artifacts/camera/{name}_debug.jpg')
-
     self.save_roi(frame, f'artifacts/camera/{name}_roi.jpg')
 
     return frame
@@ -91,111 +86,65 @@ class CameraController:
       raise RuntimeError('No valid color pixels were found inside camera ROI.')
 
     median_hue = int(np.median(pixels[:, 0]))
-
     median_saturation = int(np.median(pixels[:, 1]))
-
     median_value = int(np.median(pixels[:, 2]))
 
     return median_hue, median_saturation, median_value
 
   def measure_roi_color(self, frame: np.ndarray) -> tuple[int, int, int]:
     """Measure HSV color of the lamp in a full camera frame."""
-    roi = self.get_roi(frame)
+    return self.measure_color(self.get_roi(frame))
 
-    return self.measure_color(roi)
+  def rgb_to_hsv(self, rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+    """Convert an RGB value to OpenCV HSV."""
+    red, green, blue = rgb
 
-  def detect_color(self, frame: np.ndarray) -> str:
-    """Return the calibrated color name matching the camera frame."""
-    actual_h, actual_s, actual_v = self.measure_roi_color(frame)
+    bgr = np.uint8([[[blue, green, red]]])
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)[0, 0]
 
-    matches = []
+    return int(hsv[0]), int(hsv[1]), int(hsv[2])
 
-    for color, reference in self.COLOR_REFERENCES.items():
-      expected_h, expected_s, expected_v = reference
+  def wait_for_rgb_color(self, color: str, expected_rgb: tuple[int, int, int], timeout: float = 2, interval: float = 0.2) -> None:
+    """Wait until the physical lamp matches the expected RGB color."""
+    expected_hsv = self.rgb_to_hsv(expected_rgb)
+    name = f'{color}_{expected_rgb[0]}_{expected_rgb[1]}_{expected_rgb[2]}'
 
-      hue_difference = self._hue_distance(actual_h, expected_h)
-
-      saturation_difference = abs(actual_s - expected_s)
-
-      value_difference = abs(actual_v - expected_v)
-
-      if (
-        hue_difference <= self.COLOR_TOLERANCE['h']
-        and saturation_difference <= self.COLOR_TOLERANCE['s']
-        and value_difference <= self.COLOR_TOLERANCE['v']
-      ):
-        # Use the total HSV distance when more than one
-        # reference happens to fall inside the tolerance.
-        score = hue_difference + saturation_difference + value_difference
-
-        matches.append((score, color))
-
-    if not matches:
-      raise RuntimeError(
-        'Unable to match measured color '
-        f'HSV({actual_h}, {actual_s}, {actual_v}) '
-        'to any calibrated lamp color.'
-      )
-
-    _, color = min(matches, key=lambda match: match[0])
-
-    return color
-
-  def is_color(self, expected: str) -> bool:
-    """Check whether the physical lamp matches the expected color."""
-    if expected not in self.COLOR_REFERENCES:
-      raise ValueError(f'Unsupported camera color: {expected}')
-
-    try:
-      actual = self.detect_color(self.capture())
-    except RuntimeError:
-      return False
-
-    return actual == expected
-  
-  def wait_for_color(
-    self,
-    expected: str,
-    timeout: float = 2,
-    interval: float = 0.2,
-  ) -> None:
-    """Wait until the physical lamp reaches the expected color."""
-    if expected not in self.COLOR_REFERENCES:
-      raise ValueError(
-        f'Unsupported camera color: {expected}'
-      )
-
-    expected_hsv = self.COLOR_REFERENCES[expected]
     actual_hsv = None
+    last_frame = None
 
     def color_matches() -> bool:
-      nonlocal actual_hsv
+      nonlocal actual_hsv, last_frame
 
-      frame = self.capture()
-      actual_hsv = self.measure_roi_color(frame)
+      last_frame = self.capture()
+      actual_hsv = self.measure_roi_color(last_frame)                                                     
 
       actual_h, actual_s, actual_v = actual_hsv
-      expected_h, expected_s, expected_v = expected_hsv
+      expected_h, expected_s, _ = expected_hsv
 
-      return (
-        self._hue_distance(actual_h, expected_h)
-        <= self.COLOR_TOLERANCE['h']
-        and abs(actual_s - expected_s)
-        <= self.COLOR_TOLERANCE['s']
-        and abs(actual_v - expected_v)
-        <= self.COLOR_TOLERANCE['v']
+      if expected_s == 0:
+        return actual_s <= WHITE_SATURATION_MAX and actual_v >= WHITE_VALUE_MIN
+
+      return self._hue_distance(actual_h, expected_h) <= RGB_HUE_TOLERANCE
+
+    try:
+      wait_for_condition(
+        color_matches,
+        timeout=timeout,
+        interval=interval,
+        error_message=lambda: (
+          f'Lamp did not reach RGB {expected_rgb}. '
+          f'Expected HSV: {expected_hsv}, '
+          f'actual HSV: {actual_hsv}.'
+        ),
       )
+    except TimeoutError:
+      if last_frame is not None:
+        self.save_debug_image(last_frame, f'artifacts/camera/failed/{name}_debug.jpg')
+        self.save_roi(last_frame, f'artifacts/camera/failed/{name}_roi.jpg')
 
-    wait_for_condition(
-      color_matches,
-      timeout=timeout,
-      interval=interval,
-      error_message=lambda: (
-        f'Lamp did not become {expected}. '
-        f'Expected HSV: {expected_hsv}, '
-        f'actual HSV: {actual_hsv}.'
-      ),
-    )
+      raise
+
+    self.save_roi(last_frame, f'artifacts/camera/passed/{name}_roi.jpg')
 
   def save_debug_image(self, frame: np.ndarray, path: str) -> None:
     """Save the full camera frame with the fixed ROI marked."""
@@ -240,7 +189,7 @@ class CameraController:
 
   def _validated_roi(self, frame: np.ndarray) -> tuple[int, int, int, int]:
     """Validate that the configured ROI fits inside the frame."""
-    x, y, width, height = self.ROI
+    x, y, width, height = CAMERA_ROI
 
     frame_height, frame_width = frame.shape[:2]
 
@@ -254,7 +203,7 @@ class CameraController:
     ):
       raise RuntimeError(
         'Configured camera ROI is outside the captured frame: '
-        f'ROI={self.ROI}, '
+        f'ROI={CAMERA_ROI}, '
         f'frame={frame_width}x{frame_height}'
       )
 

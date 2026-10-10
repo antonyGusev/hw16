@@ -13,9 +13,7 @@ def hil():
   connector = UARTConnector(HIL_PORT)
   connector.open()
 
-  HIL_CAMERA_URL = HILDriver.initialize_camera_url(connector)
-
-  hil = HILDriver(connector, HIL_CAMERA_URL)
+  hil = HILDriver(connector).init_endpoints()
 
   try:
     yield hil

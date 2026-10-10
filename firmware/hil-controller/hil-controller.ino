@@ -501,6 +501,7 @@ void handleRoot() {
   message += "HIL Controller\n";
   message += "\n";
   message += "GET /capture\n";
+  message += "GET /stream\n";
   message += "GET /status\n";
 
   server.send(
@@ -574,6 +575,73 @@ void handleCapture() {
   esp_camera_fb_return(fb);
 }
 
+void handleStream() {
+  if (!cameraReady) {
+
+    server.send(
+      503,
+      "text/plain",
+      "Camera not ready");
+
+    return;
+  }
+
+  WiFiClient client =
+    server.client();
+
+  // MJPEG is a multipart HTTP response where every part is one JPEG frame.
+  // Keeping the same TCP connection open gives the test framework a stable
+  // stream with much more consistent frame timing than repeated /capture calls.
+  client.print(
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n"
+    "Cache-Control: no-cache\r\n"
+    "Pragma: no-cache\r\n"
+    "Connection: close\r\n"
+    "Access-Control-Allow-Origin: *\r\n"
+    "\r\n");
+
+  while (client.connected()) {
+    camera_fb_t* fb =
+      esp_camera_fb_get();
+
+    if (!fb) {
+      Serial.println(
+        "[HIL] ERROR: Camera stream frame capture failed");
+      break;
+    }
+
+    // Send one JPEG frame as a multipart section.
+    client.printf(
+      "--frame\r\n"
+      "Content-Type: image/jpeg\r\n"
+      "Content-Length: %u\r\n"
+      "\r\n",
+      fb->len);
+
+    size_t frameLength =
+      fb->len;
+
+    size_t written =
+      client.write(
+        fb->buf,
+        frameLength);
+
+    client.print("\r\n");
+
+    esp_camera_fb_return(fb);
+
+    if (written != frameLength) {
+      break;
+    }
+
+    // Yield so Wi-Fi and other ESP32 background tasks can run.
+    delay(1);
+  }
+
+  client.stop();
+}
+
 // ============================================================
 // WIFI
 // ============================================================
@@ -624,6 +692,15 @@ void connectWiFi() {
 
   Serial.println(
     "/capture");
+
+  Serial.print(
+    "[HIL] Stream URL: http://");
+
+  Serial.print(
+    WiFi.localIP());
+
+  Serial.println(
+    "/stream");
 }
 
 // ============================================================
@@ -672,7 +749,10 @@ void printHelp() {
     "  camera_status   - show camera status");
 
   Serial.println(
-    "  camera_url      - show capture URL");
+    "  camera_capture  - show camera capture URL");
+
+  Serial.println(
+    "  camera_stream   - show camera stream URL");
 
   Serial.println(
     "  help");
@@ -690,7 +770,7 @@ void printCameraStatus() {
     cameraReady ? "READY" : "ERROR");
 }
 
-void printCameraUrl() {
+void printCameraCaptureUrl() {
   if (WiFi.status() != WL_CONNECTED) {
 
     Serial.println(
@@ -707,6 +787,25 @@ void printCameraUrl() {
 
   Serial.println(
     "/capture");
+}
+
+void printCameraStreamUrl() {
+  if (WiFi.status() != WL_CONNECTED) {
+
+    Serial.println(
+      "[HIL] ERROR: Wi-Fi not connected");
+
+    return;
+  }
+
+  Serial.print(
+    "[HIL] Camera stream: http://");
+
+  Serial.print(
+    WiFi.localIP());
+
+  Serial.println(
+    "/stream");
 }
 
 // ============================================================
@@ -805,6 +904,11 @@ void setup() {
       "/capture",
       HTTP_GET,
       handleCapture);
+
+    server.on(
+      "/stream",
+      HTTP_GET,
+      handleStream);
 
     server.begin();
 
@@ -944,9 +1048,15 @@ void loop() {
   }
 
   else if (
-    command == "camera_url") {
+    command == "camera_capture") {
 
-    printCameraUrl();
+    printCameraCaptureUrl();
+  }
+
+  else if (
+    command == "camera_stream") {
+
+    printCameraStreamUrl();
   }
 
   else if (

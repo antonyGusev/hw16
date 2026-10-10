@@ -2,15 +2,7 @@ import time
 
 import pytest
 
-SUPPORTED_COLORS = {
-  'red': (255, 0, 0),
-  'green': (0, 255, 0),
-  'blue': (0, 0, 255),
-  'white': (255, 255, 255),
-  'yellow': (255, 180, 0),
-  'purple': (160, 0, 255),
-  'cyan': (0, 255, 255),
-}
+from test_data import RGB_COLORS, SUPPORTED_COLORS
 
 
 def response_contains(response, expected):
@@ -51,44 +43,44 @@ def test_lamp_is_off_after_reboot(lamp_on_device):
   assert not lamp_on_device.lamp.status().is_on
 
 
-@pytest.mark.positive
 @pytest.mark.parametrize(
   ('color', 'expected_rgb'),
   SUPPORTED_COLORS.items(),
+  ids=[f'{color}_{rgb[0]}_{rgb[1]}_{rgb[2]}' for color, rgb in SUPPORTED_COLORS.items()],
 )
 def test_set_named_color(lamp_on_device, hil, color, expected_rgb):
   response = lamp_on_device.lamp.set_color(color)
 
   assert response_contains(
     response,
-    f'[LAMP] color set: {color} '
-    f'({expected_rgb[0]},{expected_rgb[1]},{expected_rgb[2]})',
+    f'[LAMP] color set: {color} ({expected_rgb[0]},{expected_rgb[1]},{expected_rgb[2]})',
   )
 
   status = lamp_on_device.lamp.status()
 
   assert status.color == expected_rgb
 
-  hil.camera.wait_for_color(color)
+  hil.camera.wait_for_rgb_color(color, expected_rgb)
 
 
 @pytest.mark.positive
 @pytest.mark.parametrize(
-  'rgb',
-  [
-    (0, 0, 0),
-    (255, 255, 255),
-    (255, 0, 128),
-  ],
+  ('color', 'rgb'),
+  RGB_COLORS.items(),
+  ids=[f'{color}_{rgb[0]}_{rgb[1]}_{rgb[2]}' for color, rgb in RGB_COLORS.items()],
 )
-def test_set_rgb_color(lamp_on_device, rgb):
+def test_set_rgb_color(lamp_on_device, hil, color, rgb):
   red, green, blue = rgb
 
   response = lamp_on_device.lamp.set_rgb(red, green, blue)
-  status = lamp_on_device.lamp.status()
 
   assert response_contains(response, f'[LAMP] color set: ({red},{green},{blue})')
+
+  status = lamp_on_device.lamp.status()
+
   assert status.color == rgb
+
+  hil.camera.wait_for_rgb_color(color, rgb)
 
 
 @pytest.mark.positive
