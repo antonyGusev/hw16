@@ -16,6 +16,3 @@ RGB_COLORS = {
   'rgb_violet': (128, 64, 192),
   'rgb_purple': (100, 50, 200),
 }
-
-
-CAMERA_ROI = (280, 355, 75, 75)

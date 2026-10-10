@@ -10,26 +10,33 @@ def response_contains(response, expected):
 
 
 @pytest.mark.positive
-def test_lamp_on(device):
+def test_lamp_on(device, hil):
   try:
     response = device.lamp.on()
+    status = device.lamp.status()
 
     assert response_contains(response, '[LAMP] on')
-    assert device.lamp.status().is_on
+    assert status.is_on
+    assert status.color == SUPPORTED_COLORS['white']
+
+    hil.camera.wait_for_rgb_color('lamp_on_white', status.color)
 
   finally:
     device.lamp.off()
 
 
 @pytest.mark.positive
-def test_lamp_off(device):
+def test_lamp_off(device, hil):
   device.lamp.on()
 
   try:
     response = device.lamp.off()
+    status = device.lamp.status()
 
     assert response_contains(response, '[LAMP] off')
-    assert not device.lamp.status().is_on
+    assert not status.is_on
+
+    hil.camera.wait_for_rgb_color('lamp_off_red', SUPPORTED_COLORS['red'])
 
   finally:
     if device.lamp.status().is_on:

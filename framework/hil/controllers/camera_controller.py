@@ -6,11 +6,11 @@ import numpy as np
 import requests
 
 from lib import wait_for_condition
-from test_data import CAMERA_ROI
 
 RGB_HUE_TOLERANCE = 20
 WHITE_SATURATION_MAX = 120
 WHITE_VALUE_MIN = 180
+CAMERA_ROI = (280, 355, 75, 75)
 
 
 @dataclass
@@ -104,7 +104,9 @@ class CameraController:
 
     return int(hsv[0]), int(hsv[1]), int(hsv[2])
 
-  def wait_for_rgb_color(self, color: str, expected_rgb: tuple[int, int, int], timeout: float = 2, interval: float = 0.2) -> None:
+  def wait_for_rgb_color(
+    self, color: str, expected_rgb: tuple[int, int, int], timeout: float = 2, interval: float = 0.2
+  ) -> None:
     """Wait until the physical lamp matches the expected RGB color."""
     expected_hsv = self.rgb_to_hsv(expected_rgb)
     name = f'{color}_{expected_rgb[0]}_{expected_rgb[1]}_{expected_rgb[2]}'
@@ -116,7 +118,7 @@ class CameraController:
       nonlocal actual_hsv, last_frame
 
       last_frame = self.capture()
-      actual_hsv = self.measure_roi_color(last_frame)                                                     
+      actual_hsv = self.measure_roi_color(last_frame)
 
       actual_h, actual_s, actual_v = actual_hsv
       expected_h, expected_s, _ = expected_hsv

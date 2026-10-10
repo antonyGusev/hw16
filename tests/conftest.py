@@ -29,6 +29,8 @@ def device():
   connector.open()
 
   device = DeviceDriver(connector)
+  device.lamp.set_color('white')
+  device.lamp.set_brightness(50)
 
   try:
     yield device
