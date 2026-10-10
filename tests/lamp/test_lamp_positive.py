@@ -44,10 +44,15 @@ def test_lamp_off(device, hil):
 
 
 @pytest.mark.positive
-def test_lamp_is_off_after_reboot(lamp_on_device):
+def test_lamp_is_off_after_reboot(lamp_on_device, hil):
   lamp_on_device.reboot()
 
-  assert not lamp_on_device.lamp.status().is_on
+  status = lamp_on_device.lamp.status()
+
+  assert not status.is_on
+  assert status.timer_s == 0
+
+  hil.camera.wait_for_rgb_color('reboot_off_red', SUPPORTED_COLORS['red'])
 
 
 @pytest.mark.parametrize(
@@ -122,17 +127,19 @@ def test_set_supported_mode(lamp_on_device, mode):
 
 
 @pytest.mark.positive
-def test_timer_expires_and_turns_lamp_off(lamp_on_device):
+def test_timer_expires_and_turns_lamp_off(lamp_on_device, hil):
   response = lamp_on_device.lamp.set_timer(1)
 
   assert response_contains(response, '[LAMP] auto-off in 1 s')
 
-  expiration_log = lamp_on_device.wait_for_log('[LAMP] timer expired, lamp off', timeout=2)
+  log = lamp_on_device.wait_for_log('[LAMP] timer expired, lamp off', timeout=2)
   status = lamp_on_device.lamp.status()
 
-  assert response_contains(expiration_log, '[LAMP] timer expired, lamp off')
+  assert response_contains(log, '[LAMP] timer expired, lamp off')
   assert not status.is_on
   assert status.timer_s == 0
+
+  hil.camera.wait_for_rgb_color('timer_expired_red', SUPPORTED_COLORS['red'])
 
 
 @pytest.mark.positive
