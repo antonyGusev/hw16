@@ -5,7 +5,23 @@ from packaging.version import Version
 
 from config import HIL_PORT, PASSWORD, SSID
 from framework import DeviceDriver, HILDriver
-from lib import UARTConnector, find_device_port
+from lib import UARTConnector, find_device_port, has_active_wifi_connection
+
+
+def pytest_collection_modifyitems(items):
+  def test_order(item):
+    if item.get_closest_marker('first'):
+      return -1
+
+    if item.get_closest_marker('positive'):
+      return 0
+
+    if item.get_closest_marker('negative'):
+      return 1
+
+    return 2
+
+  items.sort(key=test_order)
 
 
 @pytest.fixture(scope='session')
@@ -29,8 +45,6 @@ def device():
   connector.open()
 
   device = DeviceDriver(connector)
-  device.lamp.set_color('white')
-  device.lamp.set_brightness(50)
 
   try:
     yield device
@@ -43,7 +57,7 @@ def device():
 
 @pytest.fixture
 def connected_device(device):
-  if device.wifi.status().ip != '0.0.0.0' and device.wifi.status().ssid not in (None, ''):
+  if has_active_wifi_connection(device):
     return device
 
   result = device.wifi.connect(SSID, PASSWORD)
@@ -56,8 +70,10 @@ def connected_device(device):
 @pytest.fixture
 def disconnected_device(device):
   disconnected = device.wifi.disconnect()
+  is_connected = has_active_wifi_connection(device)
 
   assert disconnected, 'Failed to prepare disconnected DUT.'
+  assert not is_connected, 'DUT is still connected to Wi-Fi after disconnecting.'
 
   return device
 
@@ -67,19 +83,6 @@ def rebooted_device(device):
   device.reboot()
 
   return device
-
-
-def pytest_collection_modifyitems(items):
-  def test_order(item):
-    if item.get_closest_marker('positive'):
-      return 0
-
-    if item.get_closest_marker('negative'):
-      return 1
-
-    return 2
-
-  items.sort(key=test_order)
 
 
 @pytest.fixture(scope='session')
@@ -96,12 +99,13 @@ def firmware_version(device) -> Version:
 
 
 @pytest.fixture(autouse=True)
-def check_min_firmware(request, firmware_version):
+def check_min_firmware(request):
   marker = request.node.get_closest_marker('min_fw')
 
   if marker is None:
     return
 
+  firmware_version = request.getfixturevalue('firmware_version')
   required_version = Version(marker.args[0])
 
   if firmware_version < required_version:

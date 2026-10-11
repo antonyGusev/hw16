@@ -1,22 +1,15 @@
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
 from config import PASSWORD, SSID
-from lib import wait_for_condition
+from lib import has_active_wifi_connection, wait_for_condition
 from test_data import SUPPORTED_COLORS
 
 """
 Test helpers
 """
-
-
-def has_active_wifi_connection(device):
-  # Firmware currently may report `connected=True` after disconnect.
-  # SSID/IP/RSSI still describe whether an active connection actually exists.
-  status = device.wifi.status()
-
-  return status.ssid == SSID and status.ip not in (None, '', '0.0.0.0') and status.rssi != 0
 
 
 def wait_for_led_color(hil, expected_color, timeout=5):
@@ -106,6 +99,23 @@ def test_scan_reports_rssi_and_channel(device):
   assert isinstance(network.rssi, int)
   assert isinstance(network.channel, int)
   assert network.channel > 0
+
+
+@pytest.mark.first
+@pytest.mark.positive
+def test_k3_without_saved_credentials(device, hil):
+  with ThreadPoolExecutor(max_workers=1) as executor:
+    log_future = executor.submit(
+      device.wait_for_log,
+      "no saved credentials, use 'connect' first",
+      5,
+    )
+
+    hil.buttons.k3()
+    response = log_future.result()
+
+  assert any("no saved credentials, use 'connect' first" in line for line in response)
+  assert not has_active_wifi_connection(device)
 
 
 @pytest.mark.positive

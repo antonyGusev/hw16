@@ -14,6 +14,7 @@ dependencies = [
   'opencv-python',
   'numpy',
   'ruff',
+  'esptool',
 ]
 
 [tool.setuptools.packages.find]
@@ -32,12 +33,14 @@ python_files = ['test_*.py']
 pythonpath = ['.']
 addopts = '-v --tb=short'
 markers = [
+    "first: tests that must run before all other tests",
     "positive: positive test cases",
     "negative: negative test cases",
     "min_fw(version): minimum firmware version required by the test",
 ]
 
 [tool.poe.tasks]
+flash = 'python flash_device.py'
 regression = 'pytest'
 
 positive = "pytest -m positive"

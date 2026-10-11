@@ -30,6 +30,8 @@ BREATHE_MIN_AMPLITUDE_RATIO = 0.05
 BREATHE_MIN_SAMPLES = 10
 BREATHE_SMOOTHING_WINDOW = 7
 
+VideoMeasurement = Literal['max_brightness']
+
 
 @dataclass(frozen=True)
 class VerificationConfig:
@@ -96,6 +98,13 @@ class VideoModule(BaseCameraModule):
       raise
 
     self._save_video(observation.frames, f'artifacts/camera/passed/{artifact_name}.mp4')
+    
+  def measure(self, measurement: VideoMeasurement, duration: float) -> float:
+    """Measure the requested temporal lamp property."""
+    if measurement == 'max_brightness':
+      return self._measure_max_brightness(duration)
+
+    raise ValueError(f'Unsupported video measurement: {measurement}')
 
   # region Service methods
 
@@ -251,6 +260,13 @@ class VideoModule(BaseCameraModule):
       frames=frames,
       timestamps=timestamps,
     )
+    
+  def _measure_max_brightness(self, duration: float) -> float:
+    """Measure the maximum active brightness during an observation."""
+    observation = self._collect_observation(duration)
+    intensities = np.array([self.measure_roi_intensity(frame) for frame in observation.frames])
+
+    return float(np.percentile(intensities, 90))
 
   @staticmethod
   def _read_frame(stream: cv2.VideoCapture) -> np.ndarray:

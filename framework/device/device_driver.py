@@ -6,6 +6,7 @@ from .controllers import (
   ConfigController,
   DistanceSensorController,
   LampController,
+  LedController,
   WifiController,
 )
 
@@ -19,6 +20,7 @@ class DeviceDriver:
     self.config = ConfigController(connector)
     self.distance = DistanceSensorController(connector)
     self.lamp = LampController(connector)
+    self.led = LedController(connector)
     self.wifi = WifiController(connector)
 
   def help(self) -> list[str]:

@@ -38,16 +38,27 @@ KNOWN_USB_DEVICES = {
 }
 
 
-def find_device_port():
+def find_device_port(fail_if_missing=True):
   ports = list(list_ports.comports())
 
   if not ports:
-    pytest.fail('No COM ports found.')
+    if fail_if_missing:
+      pytest.fail('No COM ports found.')
 
-  # Filter available ports by known USB VID/PID pairs.
+    return None
+
   candidates = [port for port in ports if (port.vid, port.pid) in KNOWN_USB_DEVICES]
 
   if not candidates:
-    pytest.fail('No supported USB serial devices found.')
+    if fail_if_missing:
+      pytest.fail('No supported USB serial devices found.')
+
+    return None
 
   return candidates[0].device
+
+
+def has_active_wifi_connection(device) -> bool:
+  status = device.wifi.status()
+
+  return status.ip not in (None, '', '0.0.0.0') and status.ssid not in (None, '')

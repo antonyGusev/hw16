@@ -1,5 +1,6 @@
 import pytest
 
+from lib import has_active_wifi_connection
 from test_data import RGB_COLORS, SUPPORTED_COLORS
 
 
@@ -65,6 +66,7 @@ def test_lamp_is_off_after_reboot(lamp_on_device, hil):
   )
 
 
+@pytest.mark.positive
 @pytest.mark.parametrize(
   ('color', 'expected_rgb'),
   SUPPORTED_COLORS.items(),
@@ -134,6 +136,29 @@ def test_set_brightness(lamp_on_device, hil):
     name='brightness_levels',
     brightness_levels=measured,
   )
+
+
+@pytest.mark.positive
+@pytest.mark.parametrize(
+  ('mode', 'duration'),
+  [
+    ('blink', 3.0),
+    ('breathe', 7.0),
+  ],
+)
+def test_brightness_applies_in_all_modes(lamp_on_device, hil, mode, duration):
+  brightness = 30
+
+  lamp_on_device.lamp.set_color('white')
+  lamp_on_device.lamp.set_brightness(brightness)
+
+  lamp_on_device.lamp.set_mode('solid')
+  solid_intensity = hil.camera.photo.measure('brightness')
+
+  lamp_on_device.lamp.set_mode(mode)
+  mode_intensity = hil.camera.video.measure('max_brightness', duration)
+
+  assert mode_intensity == pytest.approx(solid_intensity, rel=0.1)
 
 
 @pytest.mark.positive
@@ -331,3 +356,94 @@ def test_scene_survives_reboot(lamp_on_device):
   assert status.color == expected_rgb
   assert status.brightness == expected_brightness
   assert status.mode == expected_mode
+
+
+@pytest.mark.positive
+def test_lamp_overrides_wifi_and_led_commands(connected_device, hil):
+  expected_rgb = SUPPORTED_COLORS['blue']
+
+  connected_device.lamp.set_color('blue')
+  connected_device.lamp.set_brightness(50)
+  connected_device.lamp.set_mode('solid')
+  connected_device.lamp.on()
+
+  try:
+    initial_status = connected_device.lamp.status()
+
+    hil.camera.photo.verify(
+      'rgb',
+      name='lamp_priority_initial',
+      expected_rgb=expected_rgb,
+    )
+
+    connected_device.wifi.disconnect()
+
+    status_after_wifi_change = connected_device.lamp.status()
+
+    assert status_after_wifi_change == initial_status
+
+    hil.camera.photo.verify(
+      'rgb',
+      name='lamp_priority_after_wifi_change',
+      expected_rgb=expected_rgb,
+    )
+
+    connected_device.led.off()
+
+    status_after_led_command = connected_device.lamp.status()
+
+    assert status_after_led_command == initial_status
+
+    hil.camera.photo.verify(
+      'rgb',
+      name='lamp_priority_after_led_command',
+      expected_rgb=expected_rgb,
+    )
+
+  finally:
+    connected_device.led.auto()
+    connected_device.lamp.off()
+
+
+@pytest.mark.positive
+def test_wifi_connected_indication_is_restored_after_lamp_off(connected_device, hil):
+  connected_device.led.auto()
+  connected_device.lamp.set_color('blue')
+  connected_device.lamp.set_brightness(50)
+  connected_device.lamp.set_mode('solid')
+  connected_device.lamp.on()
+
+  response = connected_device.lamp.off()
+  status = connected_device.lamp.status()
+
+  assert response_contains(response, '[LAMP] off')
+  assert not status.is_on
+
+  hil.camera.photo.verify(
+    'rgb',
+    name='wifi_connected_indication_after_lamp_off',
+    expected_rgb=SUPPORTED_COLORS['green'],
+  )
+
+
+@pytest.mark.positive
+def test_wifi_disconnected_indication_is_restored_after_lamp_off(disconnected_device, hil):
+  disconnected_device.led.auto()
+  disconnected_device.lamp.set_color('blue')
+  disconnected_device.lamp.set_brightness(50)
+  disconnected_device.lamp.set_mode('solid')
+  disconnected_device.lamp.on()
+
+  assert not has_active_wifi_connection(disconnected_device)
+
+  response = disconnected_device.lamp.off()
+  status = disconnected_device.lamp.status()
+
+  assert response_contains(response, '[LAMP] off')
+  assert not status.is_on
+
+  hil.camera.photo.verify(
+    'rgb',
+    name='wifi_disconnected_indication_after_lamp_off',
+    expected_rgb=SUPPORTED_COLORS['red'],
+  )

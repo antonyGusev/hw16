@@ -3,6 +3,7 @@ from .auth_controller import AuthController
 from .config_controller import ConfigController
 from .distance_sensor_controller import DistanceSensorController
 from .lamp_controller import LampController
+from .led_controller import LedController
 from .wifi_controller import WifiController
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
   'ConfigController',
   'DistanceSensorController',
   'LampController',
+  'LedController',
   'WifiController',
 ]
