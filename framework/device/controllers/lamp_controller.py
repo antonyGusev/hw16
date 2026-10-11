@@ -55,9 +55,10 @@ class LampController:
     return self._connector.execute_command(f'lamp scene load {scene}', until='[LAMP]')
 
   def execute(self, subcommand: str) -> list[str]:
+    """Execute a raw lamp subcommand for protocol-level validation."""
     # Keep a generic escape hatch for protocol-level negative tests such as
     # `lamp blabla` without exposing the UART connector to the test layer.
-    return self._connector.execute_command(f'lamp {subcommand}')
+    return self._connector.execute_command(f'lamp {subcommand}', until=('error:', '[LAMP]'))  
 
   # region Service Methods
 

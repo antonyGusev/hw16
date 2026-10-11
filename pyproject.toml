@@ -44,7 +44,9 @@ positive = "pytest -m positive"
 negative = "pytest -m negative"
 
 wifi = "pytest tests/wifi/test_wifi_positive.py tests/wifi/test_wifi_negative.py"
-lamp = "pytest tests/lamp/test_lamp_positive.py"
+lamp = "pytest tests/lamp/test_lamp_positive.py tests/lamp/test_lamp_negative.py"
+
+lamp_negative = "pytest tests/lamp/test_lamp_negative.py"
 
 lint = 'ruff check .'
 format = 'ruff format .'
