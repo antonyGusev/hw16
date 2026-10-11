@@ -1,5 +1,3 @@
-import time
-
 import pytest
 
 from test_data import RGB_COLORS, SUPPORTED_COLORS
@@ -19,7 +17,7 @@ def test_lamp_on(device, hil):
     assert status.is_on
     assert status.color == SUPPORTED_COLORS['white']
 
-    hil.camera.wait_for_rgb_color('lamp_on_white', status.color)
+    hil.camera.photo.wait_for_rgb_color('lamp_on_white', status.color)
 
   finally:
     device.lamp.off()
@@ -36,7 +34,7 @@ def test_lamp_off(device, hil):
     assert response_contains(response, '[LAMP] off')
     assert not status.is_on
 
-    hil.camera.wait_for_rgb_color('lamp_off_red', SUPPORTED_COLORS['red'])
+    hil.camera.photo.wait_for_rgb_color('lamp_off_red', SUPPORTED_COLORS['red'])
 
   finally:
     if device.lamp.status().is_on:
@@ -52,7 +50,7 @@ def test_lamp_is_off_after_reboot(lamp_on_device, hil):
   assert not status.is_on
   assert status.timer_s == 0
 
-  hil.camera.wait_for_rgb_color('reboot_off_red', SUPPORTED_COLORS['red'])
+  hil.camera.photo.wait_for_rgb_color('reboot_off_red', SUPPORTED_COLORS['red'])
 
 
 @pytest.mark.parametrize(
@@ -72,7 +70,7 @@ def test_set_named_color(lamp_on_device, hil, color, expected_rgb):
 
   assert status.color == expected_rgb
 
-  hil.camera.wait_for_rgb_color(color, expected_rgb)
+  hil.camera.photo.wait_for_rgb_color(color, expected_rgb)
 
 
 @pytest.mark.positive
@@ -92,7 +90,7 @@ def test_set_rgb_color(lamp_on_device, hil, color, rgb):
 
   assert status.color == rgb
 
-  hil.camera.wait_for_rgb_color(color, rgb)
+  hil.camera.photo.wait_for_rgb_color(color, rgb)
 
 
 @pytest.mark.positive
@@ -112,18 +110,17 @@ def test_set_brightness(lamp_on_device, brightness):
     'solid',
     'blink',
     'breathe',
-    pytest.param(
-      'rainbow',
-      marks=pytest.mark.min_fw('1.5.0'),
-    ),
+    pytest.param('rainbow', marks=pytest.mark.min_fw('1.5.0')),
   ],
 )
-def test_set_supported_mode(lamp_on_device, mode):
+def test_set_supported_mode(lamp_on_device, hil, mode):
   response = lamp_on_device.lamp.set_mode(mode)
   status = lamp_on_device.lamp.status()
 
   assert response_contains(response, f'[LAMP] mode set: {mode}')
   assert status.mode == mode
+
+  hil.camera.video.verify(mode)
 
 
 @pytest.mark.positive
@@ -139,11 +136,11 @@ def test_timer_expires_and_turns_lamp_off(lamp_on_device, hil):
   assert not status.is_on
   assert status.timer_s == 0
 
-  hil.camera.wait_for_rgb_color('timer_expired_red', SUPPORTED_COLORS['red'])
+  hil.camera.photo.wait_for_rgb_color('timer_expired_red', SUPPORTED_COLORS['red'])
 
 
 @pytest.mark.positive
-def test_cancel_active_timer(lamp_on_device):
+def test_cancel_active_timer(lamp_on_device, hil):
   lamp_on_device.lamp.set_timer(2)
 
   response = lamp_on_device.lamp.set_timer(0)
@@ -153,9 +150,7 @@ def test_cancel_active_timer(lamp_on_device):
   assert status.is_on
   assert status.timer_s == 0
 
-  # Prove that cancelling the timer removes the scheduled auto-off,
-  # not only the timer value reported by `lamp status`.
-  time.sleep(2.2)
+  hil.camera.video.verify('stable_color', name='cancelled_timer')
 
   assert lamp_on_device.lamp.status().is_on
 

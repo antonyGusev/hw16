@@ -79,11 +79,7 @@ class UARTConnector:
   #
   # With an expected pattern, temporary gaps in the serial output are ignored
   # and reading continues until the pattern is received or the overall timeout expires.
-  def _read_response(
-    self,
-    timeout: float,
-    until: ResponsePattern | None = None,
-  ) -> list[str]:
+  def _read_response(self, timeout: float, until: ResponsePattern | None = None) -> list[str]:
     self._ensure_open()
 
     lines: list[str] = []
@@ -108,8 +104,7 @@ class UARTConnector:
 
     if patterns is not None:
       raise DeviceTimeoutError(
-        f'Expected response {patterns} was not received within {timeout}s. '
-        f'Received: {lines}'
+        f'Expected response {patterns} was not received within {timeout}s. Received: {lines}'
       )
 
     return lines

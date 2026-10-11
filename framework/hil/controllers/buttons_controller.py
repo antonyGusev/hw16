@@ -16,6 +16,8 @@ class ButtonsController:
 
   def k4(self) -> list[str]:
     return self._press('k4')
+  
+  # region Service methods
 
   def _press(self, button: str) -> list[str]:
     return self._connector.execute_command(
@@ -23,3 +25,5 @@ class ButtonsController:
       timeout=2,
       until=f'[HIL] {button.upper()} release',
     )
+    
+  # endregion
