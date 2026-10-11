@@ -17,7 +17,11 @@ def test_lamp_on(device, hil):
     assert status.is_on
     assert status.color == SUPPORTED_COLORS['white']
 
-    hil.camera.photo.wait_for_rgb_color('lamp_on_white', status.color)
+    hil.camera.photo.verify(
+      'rgb',
+      name='lamp_on_white',
+      expected_rgb=status.color,
+    )
 
   finally:
     device.lamp.off()
@@ -34,7 +38,11 @@ def test_lamp_off(device, hil):
     assert response_contains(response, '[LAMP] off')
     assert not status.is_on
 
-    hil.camera.photo.wait_for_rgb_color('lamp_off_red', SUPPORTED_COLORS['red'])
+    hil.camera.photo.verify(
+      'rgb',
+      name='lamp_off_red',
+      expected_rgb=SUPPORTED_COLORS['red'],
+    )
 
   finally:
     if device.lamp.status().is_on:
@@ -50,7 +58,11 @@ def test_lamp_is_off_after_reboot(lamp_on_device, hil):
   assert not status.is_on
   assert status.timer_s == 0
 
-  hil.camera.photo.wait_for_rgb_color('reboot_off_red', SUPPORTED_COLORS['red'])
+  hil.camera.photo.verify(
+    'rgb',
+    name='reboot_off_red',
+    expected_rgb=SUPPORTED_COLORS['red'],
+  )
 
 
 @pytest.mark.parametrize(
@@ -70,7 +82,11 @@ def test_set_named_color(lamp_on_device, hil, color, expected_rgb):
 
   assert status.color == expected_rgb
 
-  hil.camera.photo.wait_for_rgb_color(color, expected_rgb)
+  hil.camera.photo.verify(
+    'rgb',
+    name=color,
+    expected_rgb=expected_rgb,
+  )
 
 
 @pytest.mark.positive
@@ -90,17 +106,34 @@ def test_set_rgb_color(lamp_on_device, hil, color, rgb):
 
   assert status.color == rgb
 
-  hil.camera.photo.wait_for_rgb_color(color, rgb)
+  hil.camera.photo.verify(
+    'rgb',
+    name=color,
+    expected_rgb=rgb,
+  )
 
 
 @pytest.mark.positive
-@pytest.mark.parametrize('brightness', [0, 1, 50, 100])
-def test_set_brightness(lamp_on_device, brightness):
-  response = lamp_on_device.lamp.set_brightness(brightness)
-  status = lamp_on_device.lamp.status()
+def test_set_brightness(lamp_on_device, hil):
+  lamp_on_device.lamp.set_color('white')
+  lamp_on_device.lamp.set_mode('solid')
 
-  assert response_contains(response, f'[LAMP] brightness set: {brightness}%')
-  assert status.brightness == brightness
+  measured = {}
+
+  for brightness in (0, 1, 50, 100):
+    response = lamp_on_device.lamp.set_brightness(brightness)
+    status = lamp_on_device.lamp.status()
+
+    assert response_contains(response, f'[LAMP] brightness set: {brightness}%')
+    assert status.brightness == brightness
+
+    measured[brightness] = hil.camera.photo.measure('brightness')
+
+  hil.camera.photo.verify(
+    'brightness',
+    name='brightness_levels',
+    brightness_levels=measured,
+  )
 
 
 @pytest.mark.positive
@@ -136,7 +169,11 @@ def test_timer_expires_and_turns_lamp_off(lamp_on_device, hil):
   assert not status.is_on
   assert status.timer_s == 0
 
-  hil.camera.photo.wait_for_rgb_color('timer_expired_red', SUPPORTED_COLORS['red'])
+  hil.camera.photo.verify(
+    'rgb',
+    name='timer_expired_red',
+    expected_rgb=SUPPORTED_COLORS['red'],
+  )
 
 
 @pytest.mark.positive
@@ -150,7 +187,10 @@ def test_cancel_active_timer(lamp_on_device, hil):
   assert status.is_on
   assert status.timer_s == 0
 
-  hil.camera.video.verify('stable_color', name='cancelled_timer')
+  hil.camera.video.verify(
+    'stable_color',
+    name='cancelled_timer',
+  )
 
   assert lamp_on_device.lamp.status().is_on
 
@@ -171,7 +211,7 @@ def test_timer_accepts_upper_boundary(lamp_on_device):
 
 
 @pytest.mark.positive
-def test_timer_is_not_preserved_after_reboot(lamp_on_device):
+def test_timer_is_not_preserved_after_reboot(lamp_on_device, hil):
   lamp_on_device.lamp.set_timer(10)
 
   lamp_on_device.reboot()
@@ -180,6 +220,12 @@ def test_timer_is_not_preserved_after_reboot(lamp_on_device):
 
   assert not status.is_on
   assert status.timer_s == 0
+
+  hil.camera.photo.verify(
+    'rgb',
+    name='timer_after_reboot_red',
+    expected_rgb=SUPPORTED_COLORS['red'],
+  )
 
 
 @pytest.mark.positive
@@ -201,8 +247,10 @@ def test_lamp_status_matches_configured_state(lamp_on_device):
 
 
 @pytest.mark.positive
-def test_lamp_settings_survive_reboot(lamp_on_device):
-  lamp_on_device.lamp.set_rgb(12, 34, 56)
+def test_lamp_settings_survive_reboot(lamp_on_device, hil):
+  expected_rgb = (12, 34, 56)
+
+  lamp_on_device.lamp.set_rgb(*expected_rgb)
   lamp_on_device.lamp.set_brightness(37)
   lamp_on_device.lamp.set_mode('breathe')
 
@@ -211,10 +259,23 @@ def test_lamp_settings_survive_reboot(lamp_on_device):
   status = lamp_on_device.lamp.status()
 
   assert not status.is_on
-  assert status.color == (12, 34, 56)
+  assert status.color == expected_rgb
   assert status.brightness == 37
   assert status.mode == 'breathe'
   assert status.timer_s == 0
+
+  lamp_on_device.lamp.on()
+
+  hil.camera.photo.verify(
+    'rgb',
+    name='persisted_color_after_reboot',
+    expected_rgb=expected_rgb,
+  )
+
+  hil.camera.video.verify(
+    'breathe',
+    name='persisted_breathe_after_reboot',
+  )
 
 
 @pytest.mark.min_fw('1.5.0')

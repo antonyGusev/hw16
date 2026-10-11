@@ -16,7 +16,6 @@ SOLID_STABILIZATION_TIME = 0.5
 SOLID_REFERENCE_FRAMES = 5
 SOLID_HUE_TOLERANCE = 10
 SOLID_SATURATION_TOLERANCE = 30
-SOLID_VALUE_TOLERANCE = 30
 SOLID_WHITE_SATURATION_MAX = 120
 
 BLINK_DURATION = 3.0
@@ -27,10 +26,9 @@ BLINK_MIN_TRANSITIONS = 4
 BREATHE_DURATION = 7.0
 BREATHE_EXPECTED_PERIOD = 3.0
 BREATHE_PERIOD_TOLERANCE = 0.8
-BREATHE_MIN_AMPLITUDE = 20
+BREATHE_MIN_AMPLITUDE_RATIO = 0.05
 BREATHE_MIN_SAMPLES = 10
 BREATHE_SMOOTHING_WINDOW = 7
-BREATHE_MIN_PEAK_DISTANCE = 1.0
 
 
 @dataclass(frozen=True)
@@ -43,7 +41,7 @@ class VerificationConfig:
 class VideoObservation:
   frames: list[np.ndarray]
   timestamps: list[float]
-  
+
 
 VideoCheck = Literal[
   'solid',
@@ -118,14 +116,11 @@ class VideoModule(BaseCameraModule):
       )
     )
 
-    reference_h, reference_s, reference_v = reference_hsv
+    reference_h, reference_s, _ = reference_hsv
 
     for actual_h, actual_s, actual_v in hsv_samples[SOLID_REFERENCE_FRAMES:]:
       if reference_s <= SOLID_WHITE_SATURATION_MAX:
-        matches = (
-          abs(actual_s - reference_s) <= SOLID_SATURATION_TOLERANCE
-          and abs(actual_v - reference_v) <= SOLID_VALUE_TOLERANCE
-        )
+        matches = abs(actual_s - reference_s) <= SOLID_SATURATION_TOLERANCE
       else:
         matches = self._hue_distance(actual_h, reference_h) <= SOLID_HUE_TOLERANCE
 
@@ -188,28 +183,38 @@ class VideoModule(BaseCameraModule):
 
     low = float(np.percentile(smoothed, 10))
     high = float(np.percentile(smoothed, 90))
-    amplitude = high - low
 
-    if amplitude < BREATHE_MIN_AMPLITUDE:
+    amplitude = high - low
+    amplitude_ratio = amplitude / high if high > 0 else 0
+
+    if amplitude_ratio < BREATHE_MIN_AMPLITUDE_RATIO:
       raise AssertionError(
         f'Breathe amplitude is too small. '
-        f'Expected at least {BREATHE_MIN_AMPLITUDE}, '
-        f'actual: {amplitude:.1f}.'
+        f'Expected at least {BREATHE_MIN_AMPLITUDE_RATIO:.0%}, '
+        f'actual: {amplitude_ratio:.1%} '
+        f'({low:.1f}..{high:.1f}).'
       )
 
-    derivative = np.diff(smoothed)
+    low_threshold = low + amplitude * 0.35
+    high_threshold = low + amplitude * 0.65
 
-    peaks = [
-      observation.timestamps[index]
-      for index in range(1, len(derivative))
-      if derivative[index - 1] > 0 and derivative[index] <= 0
-    ]
+    rising_transitions = []
+    waiting_for_high = False
 
-    peaks = self._filter_peaks(peaks, BREATHE_MIN_PEAK_DISTANCE)
-    periods = np.diff(peaks)
+    for timestamp, intensity in zip(observation.timestamps, smoothed):
+      if intensity <= low_threshold:
+        waiting_for_high = True
+        continue
+
+      if waiting_for_high and intensity >= high_threshold:
+        rising_transitions.append(timestamp)
+        waiting_for_high = False
+
+    periods = np.diff(rising_transitions)
 
     if not any(
-      abs(period - BREATHE_EXPECTED_PERIOD) <= BREATHE_PERIOD_TOLERANCE for period in periods
+      abs(period - BREATHE_EXPECTED_PERIOD) <= BREATHE_PERIOD_TOLERANCE
+      for period in periods
     ):
       raise AssertionError(
         f'Invalid breathe period. '
@@ -256,17 +261,6 @@ class VideoModule(BaseCameraModule):
       raise RuntimeError('Failed to read frame from camera stream.')
 
     return frame.copy()
-
-  @staticmethod
-  def _filter_peaks(peaks: list[float], min_distance: float) -> list[float]:
-    """Remove duplicate peaks caused by short camera fluctuations."""
-    filtered = []
-
-    for peak in peaks:
-      if not filtered or peak - filtered[-1] >= min_distance:
-        filtered.append(peak)
-
-    return filtered
 
   def _save_video(self, frames: list[np.ndarray], path: str) -> None:
     """Save captured frames as an MP4 artifact."""

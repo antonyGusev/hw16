@@ -1,3 +1,6 @@
+import itertools
+from typing import Literal
+
 import cv2
 import numpy as np
 import requests
@@ -6,20 +9,21 @@ from lib import wait_for_condition
 
 from .base_camera_module import BaseCameraModule
 
+PhotoCheck = Literal['rgb', 'brightness']
+PhotoMeasurement = Literal['brightness']
+
+BRIGHTNESS_SAMPLES = 5
+
 
 class PhotoModule(BaseCameraModule):
-  """Camera controller for single-frame capture and static color validation."""
+  """Camera module for static image verification and measurements."""
 
   def capture(self) -> np.ndarray:
-    """Capture and decode a single frame from the camera snapshot endpoint."""
-    # Request the latest JPEG frame from the HIL camera.
+    """Capture and decode a single frame from the camera."""
     response = requests.get(self._endpoints.capture_url, timeout=self.timeout)
     response.raise_for_status()
 
-    # Convert raw response bytes into an OpenCV-compatible image buffer.
     image = np.frombuffer(response.content, dtype=np.uint8)
-
-    # Decode the JPEG buffer into a BGR OpenCV frame.
     frame = cv2.imdecode(image, cv2.IMREAD_COLOR)
 
     if frame is None:
@@ -27,27 +31,43 @@ class PhotoModule(BaseCameraModule):
 
     return frame
 
-  def capture_artifacts(self, name: str) -> np.ndarray:
-    """Capture a frame and save both full-frame and ROI debug artifacts."""
-    frame = self.capture()
+  def verify(
+    self,
+    check: PhotoCheck,
+    name: str,
+    expected_rgb: tuple[int, int, int] | None = None,
+    brightness_levels: dict[int, float] | None = None,
+  ) -> None:
+    """Run the requested static camera verification."""
+    if check == 'rgb':
+      if expected_rgb is None:
+        raise ValueError('expected_rgb is required for RGB verification.')
 
-    # Save the full frame with the ROI marked for easier debugging.
-    self.save_debug_image(frame, f'artifacts/camera/{name}_debug.jpg')
+      self._validate_rgb(name, expected_rgb)
+      return
 
-    # Save only the analyzed lamp ROI as a separate artifact.
-    self.save_roi(frame, f'artifacts/camera/{name}_roi.jpg')
+    if check == 'brightness':
+      if brightness_levels is None:
+        raise ValueError('brightness_levels are required for brightness verification.')
 
-    return frame
+      self._validate_brightness(brightness_levels)
+      return
 
-  def wait_for_rgb_color(
-    self, color: str, expected_rgb: tuple[int, int, int], timeout: float = 2, interval: float = 0.2
+    raise ValueError(f'Unsupported photo verification: {check}')
+
+  def measure(self, measurement: PhotoMeasurement) -> float:
+    """Measure the requested physical lamp property."""
+    if measurement == 'brightness':
+      return self._measure_brightness()
+
+    raise ValueError(f'Unsupported photo measurement: {measurement}')
+
+  def _validate_rgb(
+    self, name: str, expected_rgb: tuple[int, int, int], timeout: float = 2, interval: float = 0.2
   ) -> None:
     """Wait until the physical lamp matches the expected RGB color."""
-    # Convert expected RGB once so it can be included in the failure message.
     expected_hsv = self.rgb_to_hsv(expected_rgb)
-
-    # Include both logical color name and RGB values in artifact filenames.
-    name = f'{color}_{expected_rgb[0]}_{expected_rgb[1]}_{expected_rgb[2]}'
+    artifact_name = f'{name}_{expected_rgb[0]}_{expected_rgb[1]}_{expected_rgb[2]}'
 
     actual_hsv = None
     last_frame = None
@@ -55,33 +75,51 @@ class PhotoModule(BaseCameraModule):
     def color_matches() -> bool:
       nonlocal actual_hsv, last_frame
 
-      # Capture a fresh frame on every polling attempt.
       last_frame = self.capture()
-
-      # Measure the current physical lamp color inside the configured ROI.
       actual_hsv = self.measure_roi_color(last_frame)
 
-      # Compare the measured color against the expected RGB value.
       return self._matches_rgb(actual_hsv, expected_rgb)
 
     try:
-      # Poll until the expected color is detected or the timeout expires.
       wait_for_condition(
         color_matches,
         timeout=timeout,
         interval=interval,
         error_message=lambda: (
           f'Lamp did not reach RGB {expected_rgb}. '
-          f'Expected HSV: {expected_hsv}, actual HSV: {actual_hsv}.'
+          f'Expected HSV: {expected_hsv}, '
+          f'actual HSV: {actual_hsv}.'
         ),
       )
     except TimeoutError:
-      # Preserve the last observed frame when validation fails.
       if last_frame is not None:
-        self.save_debug_image(last_frame, f'artifacts/camera/failed/{name}_debug.jpg')
-        self.save_roi(last_frame, f'artifacts/camera/failed/{name}_roi.jpg')
+        self.save_debug_image(last_frame, f'artifacts/camera/failed/{artifact_name}_debug.jpg')
+        self.save_roi(last_frame, f'artifacts/camera/failed/{artifact_name}_roi.jpg')
 
       raise
 
-    # Save the successfully validated ROI for the test report.
-    self.save_roi(last_frame, f'artifacts/camera/passed/{name}_roi.jpg')
+    self.save_roi(last_frame, f'artifacts/camera/passed/{artifact_name}_roi.jpg')
+
+  def _validate_brightness(self, brightness_levels: dict[int, float]) -> None:
+    """Verify that physical lamp brightness increases with configured brightness."""
+    if len(brightness_levels) < 2:
+      raise ValueError('At least two brightness levels are required for validation.')
+
+    ordered_levels = sorted(brightness_levels.items())
+
+    for (previous_level, previous_value), (current_level, current_value) in itertools.pairwise(
+      ordered_levels
+    ):
+      if previous_value >= current_value:
+        raise AssertionError(
+          f'Physical brightness does not increase with configured brightness. '
+          f'{previous_level}%={previous_value:.1f}, '
+          f'{current_level}%={current_value:.1f}. '
+          f'All measurements: {brightness_levels}.'
+        )
+
+  def _measure_brightness(self) -> float:
+    """Measure median physical brightness using several camera frames."""
+    samples = [self.measure_roi_intensity(self.capture()) for _ in range(BRIGHTNESS_SAMPLES)]
+
+    return float(np.median(samples))
