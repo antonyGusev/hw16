@@ -45,16 +45,19 @@ def restore_default_lamp_state(device):
 
 def pytest_collection_modifyitems(items):
   def test_order(item):
+    # Tests marked as first have global priority because they depend on untouched DUT state.
     if item.get_closest_marker('first'):
-      return -1
+      return 0, '', 0
+
+    # Keep tests grouped by feature file, then run positive cases before negative cases.
+    marker_order = 2
 
     if item.get_closest_marker('positive'):
-      return 0
+      marker_order = 0
+    elif item.get_closest_marker('negative'):
+      marker_order = 1
 
-    if item.get_closest_marker('negative'):
-      return 1
-
-    return 2
+    return 1, item.path.as_posix(), marker_order
 
   items.sort(key=test_order)
 
@@ -91,6 +94,15 @@ def device():
       device.reboot()
     finally:
       connector.close()
+
+
+@pytest.fixture
+def lamp_on_device(device):
+  device.lamp.on()
+
+  yield device
+
+  device.lamp.off()
 
 
 @pytest.fixture
