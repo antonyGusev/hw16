@@ -11,6 +11,9 @@ RGB_HUE_TOLERANCE = 20
 WHITE_SATURATION_MAX = 120
 WHITE_VALUE_MIN = 180
 
+# Black is validated by low brightness because hue and saturation are meaningless.
+BLACK_VALUE_MAX = 50
+
 # Fixed camera ROI containing the physical lamp.
 CAMERA_ROI = (280, 355, 75, 75)
 
@@ -54,10 +57,26 @@ class BaseCameraModule(ABC):
       int(np.median(pixels[:, 1])),
       int(np.median(pixels[:, 2])),
     )
+    
+  def measure_white(self, image: np.ndarray) -> tuple[int, int, int]:
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    value = hsv[:, :, 2]
+    mask = value >= WHITE_VALUE_MIN
+
+    pixels = hsv[mask]
+
+    if pixels.size == 0:
+      return 0, 0, 0
+
+    return tuple(int(value) for value in np.median(pixels, axis=0))
 
   def measure_roi_color(self, frame: np.ndarray) -> tuple[int, int, int]:
     """Measure the lamp HSV color directly from a full camera frame."""
     return self.measure_color(self.get_roi(frame))
+  
+  def measure_roi_white(self, frame: np.ndarray) -> tuple[int, int, int]:
+    return self.measure_white(self.get_roi(frame))
 
   def measure_roi_intensity(self, frame: np.ndarray) -> float:
     """Measure the median brightness of the lamp ROI."""
@@ -117,16 +136,19 @@ class BaseCameraModule(ABC):
     
   # region Service methods
 
-  def _matches_rgb(
-    self, actual_hsv: tuple[int, int, int], expected_rgb: tuple[int, int, int]
-  ) -> bool:
+  def _matches_rgb(self, actual_hsv: tuple[int, int, int], expected_rgb: tuple[int, int, int]) -> bool:
     """Check whether the measured lamp color matches the expected RGB value."""
     expected_hsv = self.rgb_to_hsv(expected_rgb)
 
     actual_h, actual_s, actual_v = actual_hsv
-    expected_h, expected_s, _ = expected_hsv
+    expected_h, expected_s, expected_v = expected_hsv
 
-    # Hue is undefined for white, so validate white by low saturation
+    # Hue and saturation are undefined for black, so validate it
+    # only by sufficiently low physical brightness.
+    if expected_v == 0:
+      return actual_v <= BLACK_VALUE_MAX
+
+    # Hue is undefined for white, so validate it by low saturation
     # and sufficient brightness instead.
     if expected_s == 0:
       return actual_s <= WHITE_SATURATION_MAX and actual_v >= WHITE_VALUE_MIN

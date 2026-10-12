@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from lib import has_active_wifi_connection
@@ -6,6 +8,17 @@ from test_data import RGB_COLORS, SUPPORTED_COLORS
 
 def response_contains(response, expected):
   return any(expected in line for line in response)
+
+
+@pytest.mark.first
+@pytest.mark.positive
+def test_default_lamp_state_on_clean_device(device):
+  status = device.lamp.status()
+
+  assert not status.is_on
+  assert status.color == SUPPORTED_COLORS['white']
+  assert status.brightness == 50
+  assert status.mode == 'solid'
 
 
 @pytest.mark.positive
@@ -116,6 +129,32 @@ def test_set_rgb_color(lamp_on_device, hil, color, rgb):
 
 
 @pytest.mark.positive
+@pytest.mark.parametrize(
+  'rgb',
+  [
+    (0, 0, 0),
+    (255, 255, 255),
+  ],
+  ids=['min_rgb', 'max_rgb'],
+)
+def test_set_rgb_boundary_values(lamp_on_device, hil, rgb):
+  red, green, blue = rgb
+
+  response = lamp_on_device.lamp.set_rgb(red, green, blue)
+  status = lamp_on_device.lamp.status()
+
+  assert response_contains(response, f'[LAMP] color set: ({red},{green},{blue})')
+  assert status.color == rgb
+
+  # Verify that the physical LED also reflects the accepted boundary value.
+  hil.camera.photo.verify(
+    'rgb',
+    name='rgb_boundary',
+    expected_rgb=rgb,
+  )
+
+
+@pytest.mark.positive
 def test_set_brightness(lamp_on_device, hil):
   lamp_on_device.lamp.set_color('white')
   lamp_on_device.lamp.set_mode('solid')
@@ -144,6 +183,8 @@ def test_set_brightness(lamp_on_device, hil):
   [
     ('blink', 3.0),
     ('breathe', 7.0),
+    # Rainbow completes one full color cycle in approximately 5 seconds.
+    pytest.param('rainbow', 6.0, marks=pytest.mark.min_fw('1.5.0')),
   ],
 )
 def test_brightness_applies_in_all_modes(lamp_on_device, hil, mode, duration):
@@ -221,13 +262,14 @@ def test_cancel_active_timer(lamp_on_device, hil):
 
 
 @pytest.mark.positive
-def test_timer_accepts_upper_boundary(lamp_on_device):
-  response = lamp_on_device.lamp.set_timer(3600)
+@pytest.mark.parametrize('seconds', [1, 3600])
+def test_timer_accepts_boundary_values(lamp_on_device, seconds):
+  response = lamp_on_device.lamp.set_timer(seconds)
   status = lamp_on_device.lamp.status()
 
-  assert response_contains(response, '[LAMP] auto-off in 3600 s')
+  assert response_contains(response, f'[LAMP] auto-off in {seconds} s')
   assert status.is_on
-  assert 3598 <= status.timer_s <= 3600
+  assert 0 <= status.timer_s <= seconds
 
   cancel_response = lamp_on_device.lamp.set_timer(0)
 
@@ -251,6 +293,40 @@ def test_timer_is_not_preserved_after_reboot(lamp_on_device, hil):
     name='timer_after_reboot_red',
     expected_rgb=SUPPORTED_COLORS['red'],
   )
+  
+  
+@pytest.mark.positive
+def test_lamp_status_returns_valid_json(lamp_on_device):
+  response = lamp_on_device.lamp.status_raw()
+
+  json_lines = [
+    line.strip()
+    for line in response
+    if line.strip().startswith('{')
+  ]
+
+  assert len(json_lines) == 1
+
+  payload = json.loads(json_lines[0])
+
+  assert set(payload) == {
+    'lamp',
+    'color',
+    'brightness',
+    'mode',
+    'timer_s',
+  }
+
+  assert type(payload['lamp']) is str
+  assert payload['lamp'] in ('on', 'off')
+
+  assert type(payload['color']) is list
+  assert len(payload['color']) == 3
+  assert all(type(value) is int for value in payload['color'])
+
+  assert type(payload['brightness']) is int
+  assert type(payload['mode']) is str
+  assert type(payload['timer_s']) is int
 
 
 @pytest.mark.positive

@@ -61,6 +61,8 @@ class PhotoModule(BaseCameraModule):
       return self._measure_brightness()
 
     raise ValueError(f'Unsupported photo measurement: {measurement}')
+  
+  # region Service methods
 
   def _validate_rgb(
     self, name: str, expected_rgb: tuple[int, int, int], timeout: float = 2, interval: float = 0.2
@@ -76,7 +78,17 @@ class PhotoModule(BaseCameraModule):
       nonlocal actual_hsv, last_frame
 
       last_frame = self.capture()
-      actual_hsv = self.measure_roi_color(last_frame)
+
+      if expected_rgb == (255, 255, 255):
+        # White requires a dedicated measurement because the regular color mask
+        # intentionally ignores low-saturation pixels.
+        actual_hsv = self.measure_roi_white(last_frame)
+      elif expected_rgb == (0, 0, 0):
+        # Black has no useful hue or saturation, so use physical ROI brightness
+        # as the HSV value component for validation.
+        actual_hsv = (0, 0, int(self.measure_roi_intensity(last_frame)))
+      else:
+        actual_hsv = self.measure_roi_color(last_frame)
 
       return self._matches_rgb(actual_hsv, expected_rgb)
 
@@ -123,3 +135,5 @@ class PhotoModule(BaseCameraModule):
     samples = [self.measure_roi_intensity(self.capture()) for _ in range(BRIGHTNESS_SAMPLES)]
 
     return float(np.median(samples))
+  
+  # endregion

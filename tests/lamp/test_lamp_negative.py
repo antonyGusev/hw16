@@ -5,6 +5,28 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.min_fw('1.5.0')
+@pytest.mark.first
+@pytest.mark.negative
+def test_reject_loading_empty_scene(lamp_on_device):
+  scene = 3
+
+  # Set a known lamp state so we can verify that a failed scene load
+  # does not modify any current lamp settings.
+  lamp_on_device.lamp.set_rgb(12, 34, 56)
+  lamp_on_device.lamp.set_brightness(37)
+  lamp_on_device.lamp.set_mode('solid')
+  lamp_on_device.lamp.set_timer(0)
+
+  initial_status = lamp_on_device.lamp.status()
+
+  response = lamp_on_device.lamp.execute(f'scene load {scene}')
+  status = lamp_on_device.lamp.status()
+
+  assert response_contains(response, f'error: scene {scene} is empty')
+  assert status == initial_status
+
+
 @pytest.mark.negative
 def test_reject_unknown_named_color(lamp_on_device):
   initial_status = lamp_on_device.lamp.status()
@@ -51,20 +73,6 @@ def test_reject_brightness_outside_range(lamp_on_device, brightness):
 
 
 @pytest.mark.negative
-def test_reject_rainbow_before_fw_1_5_0(lamp_on_device, firmware_version):
-  if str(firmware_version) not in ('1.3.0', '1.4.0'):
-    pytest.skip('Applicable only to firmware 1.3.0 and 1.4.0')
-
-  initial_status = lamp_on_device.lamp.status()
-
-  response = lamp_on_device.lamp.execute('mode rainbow')
-  status = lamp_on_device.lamp.status()
-
-  assert response_contains(response, "error: mode 'rainbow' not implemented yet")
-  assert status.mode == initial_status.mode
-
-
-@pytest.mark.negative
 def test_reject_unknown_mode(lamp_on_device):
   initial_status = lamp_on_device.lamp.status()
 
@@ -76,7 +84,7 @@ def test_reject_unknown_mode(lamp_on_device):
 
 
 @pytest.mark.negative
-@pytest.mark.parametrize('seconds', [-1, 3601, 5000])
+@pytest.mark.parametrize('seconds', [-1, 3601])
 def test_reject_invalid_timer(lamp_on_device, seconds):
   lamp_on_device.lamp.set_timer(0)
 

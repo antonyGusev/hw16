@@ -3,9 +3,44 @@ import re
 import pytest
 from packaging.version import Version
 
-from config import HIL_PORT, PASSWORD, SSID
+from config import (
+  HIL_PORT,
+  LAMP_DEFAULT_BRIGHTNESS,
+  LAMP_DEFAULT_COLOR,
+  LAMP_DEFAULT_MODE,
+  LAMP_DEFAULT_RGB,
+  PASSWORD,
+  SSID,
+)
 from framework import DeviceDriver, HILDriver
 from lib import UARTConnector, find_device_port, has_active_wifi_connection
+
+
+def restore_default_lamp_state(device):
+  status = device.lamp.status()
+
+  if status.timer_s > 0 and status.is_on:
+    device.lamp.set_timer(0)
+
+  if status.is_on:
+    device.lamp.off()
+
+  if status.color != LAMP_DEFAULT_RGB:
+    device.lamp.set_color(LAMP_DEFAULT_COLOR)
+
+  if status.brightness != LAMP_DEFAULT_BRIGHTNESS:
+    device.lamp.set_brightness(LAMP_DEFAULT_BRIGHTNESS)
+
+  if status.mode != LAMP_DEFAULT_MODE:
+    device.lamp.set_mode(LAMP_DEFAULT_MODE)
+
+  status = device.lamp.status()
+
+  assert not status.is_on
+  assert status.color == LAMP_DEFAULT_RGB
+  assert status.brightness == LAMP_DEFAULT_BRIGHTNESS
+  assert status.mode == LAMP_DEFAULT_MODE
+  assert status.timer_s == 0
 
 
 def pytest_collection_modifyitems(items):
@@ -46,10 +81,13 @@ def device():
 
   device = DeviceDriver(connector)
 
+  restore_default_lamp_state(device)
+
   try:
     yield device
   finally:
     try:
+      restore_default_lamp_state(device)
       device.reboot()
     finally:
       connector.close()
