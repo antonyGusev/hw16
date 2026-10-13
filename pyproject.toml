@@ -33,23 +33,22 @@ python_files = ['test_*.py']
 pythonpath = ['.']
 addopts = '-v --tb=short'
 markers = [
-    "first: tests that must run before all other tests",
-    "positive: positive test cases",
-    "negative: negative test cases",
-    "min_fw(version): minimum firmware version required by the test",
+  'smoke: critical readiness checks',
+  'regression: regression test suite',
+  'positive: positive test cases',
+  'negative: negative test cases',
+  'first: tests that must run before other non-smoke tests',
+  'min_fw(version): minimum firmware version required',
 ]
 
 [tool.poe.tasks]
-flash = 'python flash_device.py'
-regression = 'pytest'
+smoke = 'pytest -m smoke'
+regression = 'pytest -m regression'
+all = 'pytest'
 
-positive = "pytest -m positive"
-negative = "pytest -m negative"
-
-wifi = "pytest tests/wifi/test_wifi_positive.py tests/wifi/test_wifi_negative.py"
-lamp = "pytest tests/lamp/test_lamp_positive.py tests/lamp/test_lamp_negative.py"
-
-lamp_negative = "pytest tests/lamp/test_lamp_negative.py"
+ota = 'pytest tests/ota'
+lamp = 'pytest tests/lamp'
+wifi = 'pytest tests/wifi'
 
 lint = 'ruff check .'
 format = 'ruff format .'

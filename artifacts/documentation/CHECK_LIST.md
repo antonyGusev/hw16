@@ -65,270 +65,39 @@
 
 ## OTA
 
-  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  TC ID        Requirement   Title                 Preconditions        Steps                                        Expected Result                                Automation   Automation Notes          Status
-  ------------ ------------- --------------------- -------------------- -------------------------------------------- ---------------------------------------------- ------------ ------------------------- --------
-  TC-OTA-001   OTA-1         Version command       Device running known Send `version`.                              Output contains FW version/build plus active   Automated    UART parsing.             Not Run
-                             reports version,      firmware.                                                         ota_0/ota_1 address and image state.                                                  
-                             partition and state                                                                                                                                                           
-
-  TC-OTA-002   OTA-1         Version consistency   Device running known Compare `version`, boot `App version`, and   All three version values are identical.        Automated    UART parsing.             Not Run
-                             across sources        firmware and         `ota check` current version.                                                                                                       
-                                                   connected to Wi-Fi.                                                                                                                                     
-
-  TC-OTA-003   OTA-2         OTA check reports     Wi-Fi connected; OTA Send `ota check`.                            Current, stable and beta versions are printed  Automated    Requires internet/test    Not Run
-                             stable and beta       server reachable.                                                 and update/up-to-date status is correct.                    server.                   
-                             channels                                                                                                                                                                      
-
-  TC-OTA-004   OTA-3         Update to stable      Device on version    Send `ota update`; wait through reboot; send Stable image downloads, installs to inactive   Automated    UART + network + reboot   Not Run
-                             channel               older than stable;   `version`.                                   partition, reboots, self-check passes and new               handling.                 
-                                                   Wi-Fi connected.                                                  stable version is valid.                                                              
-
-  TC-OTA-005   OTA-3         Update to beta        Device below beta;   Send `ota update beta`; wait through reboot; Beta image installs successfully and becomes   Automated    UART + network.           Not Run
-                             channel               Wi-Fi connected.     send `version`.                              valid after self-check.                                                               
-
-  TC-OTA-006   OTA-3         Already up to date    Device already on    Send `ota update` and monitor logs/network.  `[OTA] already up to date`; no firmware        Automated    UART sufficient; network  Not Run
-                             does not download     current stable.                                                   download or reboot occurs.                                  capture optional.         
-
-  TC-OTA-007   OTA-4         Install a specific    Wi-Fi connected;     Send `ota install <ver>`; wait for reboot;   Requested version becomes active and valid.    Automated    UART + server.            Not Run
-                             newer version         requested version    check version.                                                                                                                     
-                                                   exists and is newer.                                                                                                                                    
-
-  TC-OTA-008   OTA-4         Block downgrade       Current version      Send `ota install <older_ver>`.              Downgrade blocked message is logged; no        Automated    UART only after setup.    Not Run
-                             without force         newer than requested                                              firmware change/reboot.                                                               
-                                                   version.                                                                                                                                                
-
-  TC-OTA-009   OTA-4         Allow forced          Current version      Send `ota install <older_ver> force`; wait   Older version installs, boots, passes          Automated    UART + server.            Not Run
-                             downgrade             newer than requested through reboot.                              self-check and becomes valid.                                                         
-                                                   existing version.                                                                                                                                       
-
-  TC-OTA-010   OTA-4         Allow forced          Current version      Send `ota install <current_ver> force`; wait Same version is downloaded/reinstalled and     Automated    UART + server.            Not Run
-                             reinstall of same     available on server. through reboot.                              boots valid according to force policy.                                                
-                             version                                                                                                                                                                       
-
-  TC-OTA-011   OTA-5         OTA logs target       Device running from  1\. Record active partition using            Target partition is the inactive slot: ota_0   Automated    UART parsing.             Not Run
-                             inactive partition    known active OTA     `version`.`<br>`{=html}2. Start              -\> ota_1 or ota_1 -\> ota_0.                                                         
-                                                   slot; Wi-Fi          OTA.`<br>`{=html}3. Capture                                                                                                        
-                                                   connected.           `target partition`.                                                                                                                
-
-  TC-OTA-012   OTA-5         OTA progress and      Update available;    Start OTA and capture full log.              Log includes current version, target           Automated    UART parsing with         Not Run
-                             success logging       Wi-Fi connected.                                                  partition, URL, new version, progress at 10%                tolerant timing.          
-                                                                                                                     increments, success old-\>new with duration,                                          
-                                                                                                                     and reboot.                                                                           
-
-  TC-OTA-013   OTA-6 / FR-W5 Interrupt OTA using   Saved credentials    1\. Start OTA.`<br>`{=html}2. During         Download fails as interrupted; current         Automated    Requires HIL GPIO/button  Not Run
-                             K3 Wi-Fi disconnect   exist; Wi-Fi         download press K3.`<br>`{=html}3. Observe    firmware remains operational; retry works                   emulator and sufficiently 
-                                                   connected; update    failure.`<br>`{=html}4. Reconnect with       immediately after reconnect without device                  controllable download     
-                                                   available; HIL       K3.`<br>`{=html}5. Retry OTA without reboot. reboot.                                                     timing.                   
-                                                   button control.                                                                                                                                         
-
-  TC-OTA-014   OTA-6         Network loss during   Wi-Fi connected;     1\. Start OTA.`<br>`{=html}2. Disable        Interrupted-download failure is logged; old    Automated    Requires controllable     Not Run
-                             OTA download          update available;    AP/network during download.`<br>`{=html}3.   firmware remains active; next OTA attempt                   AP/router.                
-                                                   controllable AP.     Restore network.`<br>`{=html}4. Retry OTA    succeeds without reboot.                                                              
-                                                                        without reboot.                                                                                                                    
-
-  TC-OTA-015   OTA-7         Reject OTA commands   Wi-Fi disconnected.  Run `ota check`, `ota update`,               Each applicable OTA command fails with         Automated    UART only.                Not Run
-                             without Wi-Fi                              `ota update beta`, `ota install <ver>` and   `WiFi not connected. Use 'connect' first.`;                                           
-                                                                        custom URL OTA.                              firmware unchanged.                                                                   
-
-  TC-OTA-016   OTA-8 / FR-W3 Preserve Wi-Fi and    Saved Wi-Fi          Perform successful upgrade; after reboot     Wi-Fi credentials and lamp                     Automated    UART + OTA.               Not Run
-               / FR-L9       lamp settings across  credentials and      inspect saved settings and reconnect using   color/brightness/mode remain stored.                                                  
-                             upgrade               non-default lamp     saved credentials.                                                                                                                 
-                                                   settings exist.                                                                                                                                         
-
-  TC-OTA-017   OTA-8 /       Preserve scenes       Firmware/scenario    Perform successful OTA to a version that     Scenes remain stored and restore correct       Automated    Applicable where both     Not Run
-               FR-L10        across OTA            supports scenes;     supports scenes; load saved scenes           settings.                                                   source/target support     
-                                                   scenes saved.        afterward.                                                                                               scene storage semantics.  
-
-  TC-OTA-018   OTA-8         Preserve data across  Saved Wi-Fi/lamp     Perform forced downgrade; verify settings    Persistent settings remain; update does not    Automated    Scene behavior may be     Not Run
-                             forced downgrade      data exist; target   supported by target version.                 require reprovisioning.                                     version-dependent; only   
-                                                   older version                                                                                                                 assert features supported 
-                                                   exists.                                                                                                                       by target.                
-
-  TC-OTA-019   OTA-9         New image enters      Valid update         Perform OTA and capture first boot log; then First boot logs PENDING_VERIFY self-check,     Automated    UART must                 Not Run
-                             pending verify and    available.           send `version`.                              then self-check passed/marked VALID; version                reconnect/capture early   
-                             becomes valid                                                                           reports state valid.                                        boot logs.                
-
-  TC-OTA-020   OTA-10        Rollback from         Wi-Fi connected;     1\. Record current                           Broken image fails self-check, rollback occurs Automated    UART + reboot handling.   Not Run
-                             intentionally broken  known valid current  version/partition/settings.`<br>`{=html}2.   automatically, previous version/partition                                             
-                             firmware              version.             Send `ota broken`.`<br>`{=html}3. Capture    becomes active and valid, settings remain.                                            
-                                                                        reboot/rollback logs.`<br>`{=html}4. Send                                                                                          
-                                                                        `version` after recovery.                                                                                                          
-
-  TC-OTA-021   OTA rollback  Reset before new      Valid update image   1\. Start OTA and allow reboot into new      Bootloader rolls back to previous valid        Automated    Requires precise HIL      Not Run
-               mechanics     image confirms itself available; HIL       image.`<br>`{=html}2. Reset/power-cycle      firmware because new image did not confirm                  reset/power control and   
-                                                   power/reset control. while image is PENDING_VERIFY before         itself.                                                     observable pending-verify 
-                                                                        confirmation.`<br>`{=html}3. Observe next                                                                window.                   
-                                                                        boot.                                                                                                                              
-
-  TC-OTA-022   OTA           Power loss during     Current image valid; Repeat OTA with power cut at several         Device remains bootable; previous valid        Automated    Requires                  Not Run
-               robustness    firmware              update available;    download percentages; restore power and      firmware is retained when update was not                    relay/MOSFET-controlled   
-                             download/write        HIL power control.   query version.                               completed/selected.                                         DUT power; run at         
-                                                                                                                                                                                 multiple cut points.      
-
-  TC-OTA-023   OTA-11        Reject                Wi-Fi connected;     Run OTA against invalid/corrupted image.     `invalid image header` or                      Automated    Requires controlled       Not Run
-                             non-ESP32/corrupted   custom URL serves                                                 `image validation failed (corrupted image)`;                HTTP/HTTPS test artifact. 
-                             image                 invalid image.                                                    current firmware remains active.                                                      
-
-  TC-OTA-024   OTA-12        OTA from custom       Wi-Fi connected;     Send `ota <url>`; wait through reboot.       Image from supplied URL is installed according Automated    Use deterministic test    Not Run
-                             HTTP/HTTPS URL        valid firmware                                                    to OTA validation rules.                                    server.                   
-                                                   hosted at custom                                                                                                                                        
-                                                   URL.                                                                                                                                                    
-
-  TC-OTA-025   OTA-12        OTA test server does  Device in known      Send `ota-test-server`; capture log/reboot;  Simulation logs/reboots as specified but       Automated    UART/reboot.              Not Run
-                             not flash firmware    version/partition.   check `version`.                             firmware version/partition content is not                                             
-                                                                                                                     replaced.                                                                             
-
-  TC-OTA-026   OTA partition Successive updates    At least two         Perform two successful OTA installs,         Each new image is written to inactive slot;    Automated    UART + multiple server    Not Run
-               alternation   alternate OTA slots   installable versions checking `version` after each.               active slot alternates ota_0 \<-\> ota_1.                   versions.                 
-                                                   available.                                                                                                                                              
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-
-                                                                                                                                                                                                           
-  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| TC ID | Requirement | Title | Preconditions | Steps | Expected Result | Automation | Automation Notes | Status |
+|---|---|---|---|---|---|---|---|---|
+| TC-OTA-001 | OTA-1 | Report firmware version, build, partition and image state | Known installed firmware. | Send `version`; parse output. | Output matches `FW: v<version> (build <date>)` and `partition: <ota_0\|ota_1> @ <address>, state: <state>`; partition and address are populated. | Automated | UART format and partition assertions. | Not Run |
+| TC-OTA-002 | OTA-1 | Match firmware version across three sources | Wi-Fi connected; boot logs captured. | Read `version`; capture boot `App version`; run `ota check`. | Version values in all three sources match exactly. | Automated | UART + early boot logs. | Not Run |
+| TC-OTA-003 | OTA-2 | Read stable and beta channels | Wi-Fi connected; server reachable; available stable/beta versions known. | Run `ota check`; capture output. | Logs contain `[OTA] current version: ...`, `[OTA] stable channel: ...`, `[OTA] beta channel: ...` with expected server values. | Automated | Controlled OTA server. | Not Run |
+| TC-OTA-004 | OTA-3 | Update stable channel | Current version older than stable; Wi-Fi connected. | Run `ota update`; wait for reboot and self-check; run `version`. | Stable firmware installed on inactive partition, activated and marked `valid`. | Automated | UART + reboot + OTA server. | Not Run |
+| TC-OTA-005 | OTA-3 | Update beta channel | Current version older than beta; Wi-Fi connected. | Run `ota update beta`; wait for reboot and self-check; run `version`. | Beta firmware installed and marked `valid`. | Automated | UART + reboot + OTA server. | Not Run |
+| TC-OTA-006 | OTA-3 | Skip stable update when current | Current version equals server stable; Wi-Fi connected. | Run `ota update`; capture logs and reboot/transfer evidence. | Exactly `[OTA] already up to date`; no image download, partition modification or reboot. | Automated | Assert no HTTP image GET/write; not only version unchanged. | Not Run |
+| TC-OTA-007 | OTA-4 | Install specified newer version | Named newer version exists; Wi-Fi connected. | Run `ota install <ver>`; capture logs and reboot; run `version`. | Requested firmware boots from target partition and has `state: valid`. | Automated | Controlled version catalogue. | Not Run |
+| TC-OTA-008 | OTA-4 | Block downgrade without force | Requested version older than current; Wi-Fi connected. | Record version and partition; run `ota install <older_ver>`; observe logs and state. | Exact `[OTA] downgrade blocked: <cur> -> <new>. Use 'ota install <ver> force'`; no download, firmware change or reboot. | Automated | Negative test; compare partition/state. | Not Run |
+| TC-OTA-009 | OTA-4 | Allow forced downgrade | Older version available; Wi-Fi connected. | Run `ota install <older_ver> force`; wait through reboot; inspect `version`. | Older firmware installed successfully, state is `valid`. | Automated | UART + controlled server. | Not Run |
+| TC-OTA-010 | OTA-4 | Allow forced reinstall | Current version available on server; Wi-Fi connected. | Run `ota install <current_ver> force`; capture download and reboot; run `version`. | Same-version image is actually downloaded and reinstalled; firmware boots valid. | Automated | Verify transfer rather than version alone. | Not Run |
+| TC-OTA-011 | OTA-5 | Select inactive OTA partition | Current active OTA slot known; update available; Wi-Fi connected. | Read partition using `version`; start successful OTA; capture `target partition`; check after reboot. | Target is inactive slot (`ota_0` ↔ `ota_1`), which becomes active after installation. | Automated | Compare pre/post partition. | Not Run |
+| TC-OTA-012 | OTA-5 | Report complete download/progress/success log | Server image size known; update available. | Run successful OTA; capture complete UART output. | Logs include `current version`, `target partition`, `downloading: <url>`, `new version`, progress at each 10% from 10% to 100% with byte counts, `[OTA] success: <old> -> <new> in N s. Rebooting...`; values and byte count are consistent. | Automated | Capture UART while download occupies CLI. | Not Run |
+| TC-OTA-013 | OTA-6 / FR-W5 | Recover interrupted OTA after K3 disconnect | Saved Wi-Fi credentials; HIL K3; throttled OTA download available. | Start OTA; press K3 during transfer; assert failure; reconnect with K3; retry OTA immediately without reboot. | `[OTA] failed: download interrupted (...)`; old image remains valid and functional; subsequent OTA succeeds without intermediate DUT reboot. | Automated | Requires deterministic download window. | Not Run |
+| TC-OTA-014 | OTA-6 | Recover interrupted OTA after AP outage | Controllable AP; valid OTA available. | Start OTA; disable AP while downloading; capture failure; restore AP; retry without reboot. | Interrupted-download error; current version stays operational; immediate retry works after reconnection. | Automated | Control AP/network. | Not Run |
+| TC-OTA-015 | OTA-7 | Reject every OTA command without Wi-Fi | Wi-Fi disconnected; command parser accessible; known baseline partition/version. | Parameterized: run `ota check`, `ota update`, `ota update beta`, `ota install <ver>`, `ota install <ver> force`, `ota broken`, `ota <url>`, and `ota-test-server` without reconnecting. | Every command prints exactly `[OTA] failed: WiFi not connected. Use 'connect' first.`; no download, flashing, partition switch or reboot. | Automated | Parameterized UART; include simulation command per "any OTA command". | Not Run |
+| TC-OTA-016 | OTA-8 / FR-W3 | Preserve Wi-Fi and lamp after upgrade | Wi-Fi credentials stored; non-default color/brightness/mode configured; target firmware supports settings. | Record SSID and lamp values; perform successful upgrade; after reboot verify saved connection and lamp status; activate lamp for physical verification. | SSID/password still usable without re-entry; color, brightness and mode remain identical; device requires no reconfiguration. | Automated | Test persistent settings, not transient lamp on/off state. | Not Run |
+| TC-OTA-017 | OTA-8 / FR-L10 | Preserve scenes after upgrade | Scene-capable source and target FW; scenes 1-3 saved with distinguishable values. | Save scenes; upgrade; load each scene after reboot; read `lamp status`. | Each saved scene restores its original color, brightness and mode. | Automated | Use FW versions with compatible scene feature. | Not Run |
+| TC-OTA-018 | OTA-8 | Preserve all settings after forced downgrade | Both source and target FW support scenes; saved Wi-Fi, lamp settings and scenes exist; older target image available. | Record SSID, lamp color/brightness/mode and scenes; run forced downgrade; after boot reconnect without re-entering credentials; check lamp settings and load every saved scene. | Saved Wi-Fi credentials, lamp color/brightness/mode, and scenes survive downgrade; no reprovisioning. | Automated | If no older scene-capable version exists, mark as blocked, not passed; do not silently omit scenes. | Not Run |
+| TC-OTA-019 | OTA-9 | Verify PENDING_VERIFY to VALID transition | Valid newer image available; boot UART capture configured. | Install OTA; capture first boot from reset; inspect self-check logs; send `version`. | Logs contain `[OTA] new firmware, state PENDING_VERIFY - running self-check...` then `[OTA] self-check passed, firmware marked VALID`; version points to newly activated partition and `state: valid`. | Automated | Capture initial boot from before reboot. | Not Run |
+| TC-OTA-020 | OTA-10 | Rollback broken image and preserve settings | Known valid FW; Wi-Fi connected; saved credentials, lamp settings and scenes (where supported). | Record version/partition/settings; run `ota broken`; capture both boots; run `version`; validate persisted Wi-Fi, lamp and scene settings. | `self-check FAILED` then `rolling back to previous firmware...`; automatic reboot to original version AND partition with `state: valid`; settings intact. | Automated | UART + controlled reboots + persistence assertions. | Not Run |
+| TC-OTA-021 | OTA-9 / OTA-10 (robustness) | Reset before firmware validation completes | New image enters PENDING_VERIFY; controllable reset with observable timing. | Start OTA; reset device before self-check confirms image; capture next boot; inspect version. | Firmware does not remain stuck or accept unverified image; bootloader rolls back to previously valid firmware when rollback conditions are met. | Automated | Additional robustness scenario; outcome depends on bootloader rollback configuration. | Not Run |
+| TC-OTA-022 | OTA-5 / OTA-6 (robustness) | Power interruption during OTA download/write | Working power control; stable baseline image; repeatable OTA download. | Cut DUT power at multiple download/write stages; restore power; inspect boot and version. | DUT boots functional previously valid firmware when new image has not completed validation; no unbootable state. | Automated | HIL-controlled power, multiple cut points. | Not Run |
+| TC-OTA-023 | OTA-11 | Reject invalid non-ESP32 image header | Wi-Fi connected; custom server serves deterministic non-ESP32 binary. | Record version/partition; run `ota <invalid_url>`; verify output and device responsiveness. | `[OTA] failed: invalid image header`; no switch/reboot; original version and partition remain valid. | Automated | Header-specific negative path. | Not Run |
+| TC-OTA-024 | OTA-12 | Install firmware from HTTP and HTTPS URLs | Known valid firmware images served via accessible HTTP and HTTPS URLs; Wi-Fi connected. | For both schemes on controlled runs: run `ota <url>`, wait for reboot, check version/partition/state. | Correct hosted image is downloaded, boots from new slot, passes self-check and is `valid` for both URL schemes. | Automated | Parameterized HTTP/HTTPS with controlled server and cert support. | Not Run |
+| TC-OTA-025 | OTA-12 | Simulate OTA without flashing firmware | Known version and partition; Wi-Fi connected. | Record firmware version, partition and image checksum if available; run `ota-test-server`; capture simulation logs and reboot; compare values after boot. | Simulation produces expected logs and reboot but no real firmware image download/write; original version/partition/image unchanged. | Automated | Use transfer or flash-write observation to prove no actual flashing. | Not Run |
+| TC-OTA-026 | OTA-5 (robustness) | Alternate OTA slots on successive installs | Two different installable images available; Wi-Fi connected. | Complete two successful installs, checking partition, version and image state after each. | Each install chooses inactive partition; active slot alternates `ota_0` ↔ `ota_1` and both boots are valid. | Automated | Cross-run partition comparison. | Not Run |
+| TC-OTA-027 | OTA-2 | Report update available and stable up-to-date | Server exposes stable and beta; test images can be selected to place DUT both below and at stable. | Run `ota check` while below stable; install stable; run `ota check` again. | Older image yields `[OTA] update available. Type 'ota update'`; stable image yields `[OTA] up to date (stable)`; reported versions agree with server. | Not Automated | Two explicit `ota check` branches. | Not Run |
+| TC-OTA-028 | OTA-3 | Skip beta update when already current | Current version equals published beta; Wi-Fi connected. | Run `ota update beta`; monitor logs, image requests, partition and reboot. | `[OTA] already up to date`; no image download, flash modification or reboot. | Not Automated | Beta negative/idempotency branch. | Not Run |
+| TC-OTA-029 | OTA-5 | Keep CLI occupied during OTA download | Throttled image delivery to allow reliable mid-download probe; Wi-Fi connected. | Start OTA; during download attempt another UART command; monitor response order; wait for OTA completion. | Second command is not executed concurrently with OTA download; OTA log/progress remains coherent. | Not Automated | Document actual command buffering policy before asserting whether input is ignored or delayed. | Not Run |
+| TC-OTA-030 | OTA-5 | Keep physical buttons functional during OTA download | HIL button control and observable button action independent of UART; throttled OTA image. | Start download; actuate applicable non-Wi-Fi-disconnect button(s); observe physical side effect while transfer is active. | Button effects occur during download, without waiting for OTA completion; transfer can finish and reboot normally. | Not Automated | Do not use K3 disconnect as evidence that ordinary buttons remain functional. | Not Run |
+| TC-OTA-031 | OTA-11 | Reject truncated or corrupted firmware image | Wi-Fi connected; server supplies known corrupted or deliberately truncated ESP32 image. | Record partition/version; run `ota <corrupt_url>`; capture validation logs; verify operation afterward. | `[OTA] failed: image validation failed (corrupted image)`; no partition switch; old FW remains valid and responsive. | Not Automated | Separate from invalid-header test; use reproducible fixture. | Not Run |
 
 ## Other Commands
 
@@ -596,62 +365,10 @@
 
 ## Automation Summary
 
-  -------------------------------------------------------------------------------------
-  Area        Total       Automated   Partial     Manual      Automation assessment
-  ----------- ----------- ----------- ----------- ----------- -------------------------
-  Wi-Fi       13          13          0           0           HIL-enabled full
-                                                              automation available for
-                                                              UART/state plus physical
-                                                              verification where
-                                                              supported by OV3660
-                                                              camera, HC-SR04 emulator,
-                                                              relay contact feedback,
-                                                              ULN2003 button actuation
-                                                              and calibrated LDR.
-
-  Smart Lamp  35          35          0           0           HIL-enabled full
-                                                              automation available for
-                                                              UART/state plus physical
-                                                              verification where
-                                                              supported by OV3660
-                                                              camera, HC-SR04 emulator,
-                                                              relay contact feedback,
-                                                              ULN2003 button actuation
-                                                              and calibrated LDR.
-
-  OTA         26          26          0           0           HIL-enabled full
-                                                              automation available for
-                                                              UART/state plus physical
-                                                              verification where
-                                                              supported by OV3660
-                                                              camera, HC-SR04 emulator,
-                                                              relay contact feedback,
-                                                              ULN2003 button actuation
-                                                              and calibrated LDR.
-
-  Other       15          14          0           1           HIL-enabled full
-  Commands                                                    automation available for
-                                                              UART/state plus physical
-                                                              verification where
-                                                              supported by OV3660
-                                                              camera, HC-SR04 emulator,
-                                                              relay contact feedback,
-                                                              ULN2003 button actuation
-                                                              and calibrated LDR.
-
-  TOTAL       84          80          0           4           After HIL integration: 80
-                                                              of 84 tests are fully
-                                                              automatable. The
-                                                              remaining 4 require
-                                                              reliable
-                                                              time-series/color-cycle
-                                                              optical measurement.
-
-                                                              
-
-                                                              
-
-                                                              
-
-                                                              
-  -------------------------------------------------------------------------------------
+| Area | Total | Automated (listed) | Partial | Not Automated / Manual | Notes |
+|---|---:|---:|---:|---:|---|
+| Wi-Fi | 17 | 17 | 0 | 0 | Existing checklist automation classifications. |
+| Smart Lamp | 36 | 33 | 2 | 1 | Preserve per-case statuses; some camera/firmware scenarios require implementation. |
+| OTA | 31 | 26 | 0 | 5 | Existing 26 marked Automated; five newly added cases are Not Automated. **Implementation status must be verified against pytest.** |
+| Other Commands | 15 | 14 | 0 | 1 | Existing checklist assessment. |
+| **TOTAL** | **99** | **90** | **2** | **7** | Counts are checklist classifications, not evidence of executed or passing tests. |

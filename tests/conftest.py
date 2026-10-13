@@ -45,11 +45,12 @@ def restore_default_lamp_state(device):
 
 def pytest_collection_modifyitems(items):
   def test_order(item):
-    # Tests marked as first have global priority because they depend on untouched DUT state.
-    if item.get_closest_marker('first'):
+    if item.get_closest_marker('smoke'):
       return 0, '', 0
 
-    # Keep tests grouped by feature file, then run positive cases before negative cases.
+    if item.get_closest_marker('first'):
+      return 1, '', 0
+
     marker_order = 2
 
     if item.get_closest_marker('positive'):
@@ -57,7 +58,7 @@ def pytest_collection_modifyitems(items):
     elif item.get_closest_marker('negative'):
       marker_order = 1
 
-    return 1, item.path.as_posix(), marker_order
+    return 2, item.path.as_posix(), marker_order
 
   items.sort(key=test_order)
 
@@ -107,10 +108,14 @@ def lamp_on_device(device):
 
 @pytest.fixture
 def connected_device(device):
+  status = device.wifi.status()
+  print(f'WiFi status before connection: {status}')
+
   if has_active_wifi_connection(device):
     return device
 
   result = device.wifi.connect(SSID, PASSWORD)
+  print(f'WiFi connection result: {result}')
 
   assert result.connected, f'Failed to prepare connected DUT: {result.response}'
 
@@ -160,3 +165,12 @@ def check_min_firmware(request):
 
   if firmware_version < required_version:
     pytest.skip(f'Requires firmware >= {required_version}, current firmware is {firmware_version}')
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+  outcome = yield
+  report = outcome.get_result()
+
+  if item.get_closest_marker('smoke') and report.failed:
+    item.session.shouldstop = f'Smoke test failed: {item.nodeid}. Regression aborted.'

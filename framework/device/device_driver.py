@@ -7,6 +7,7 @@ from .controllers import (
   DistanceSensorController,
   LampController,
   LedController,
+  OtaController,
   WifiController,
 )
 
@@ -21,6 +22,7 @@ class DeviceDriver:
     self.distance = DistanceSensorController(connector)
     self.lamp = LampController(connector)
     self.led = LedController(connector)
+    self.ota = OtaController(connector)
     self.wifi = WifiController(connector)
 
   def help(self) -> list[str]:
@@ -37,7 +39,7 @@ class DeviceDriver:
     # so wait until firmware reports that the device is ready again.
     self._connector.write_command('reboot')
 
-    return self._connector.wait_for_response("ready. Type 'help' for commands", timeout=10)
+    return self._connector.wait_for_response("main_task: Returned from app_main()", timeout=20)
 
   def wait_for_log(self, pattern: str, timeout: float = 5) -> list[str]:
     return self._connector.wait_for_response(pattern, timeout)
