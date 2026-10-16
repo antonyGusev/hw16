@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Preferences.h>
+#include <Wire.h>
 #include "esp_camera.h"
 
 // ============================================================
@@ -14,11 +15,16 @@ const char* HIL_WIFI_PASSWORD = "9kJTQ8SvaY!$";
 // HIL GPIO
 // ============================================================
 
-// Button emulation -> ULN2003
-#define HIL_K1 13
-#define HIL_K2 14
-#define HIL_K3 12
-#define HIL_K4 15
+// PCF8574 HW-61 -> ULN2003 via LCD header RS/RW/E/D4
+#define HIL_K1 0  // PCF8574 P0 -> LCD pin 4 (RS)
+#define HIL_K2 1  // PCF8574 P1 -> LCD pin 5 (RW)
+#define HIL_K3 2  // PCF8574 P2 -> LCD pin 6 (E)
+#define HIL_K4 4  // PCF8574 P4 -> LCD pin 11 (D4)
+#define PCF_SDA 14
+#define PCF_SCL 15
+
+// DUT power switch (MT9700-N EN, active HIGH)
+#define DUT_POWER_EN 13
 
 // Physical feedback
 #define RELAY_FEEDBACK 32
@@ -57,6 +63,7 @@ const char* HIL_WIFI_PASSWORD = "9kJTQ8SvaY!$";
 // ============================================================
 
 const uint32_t PRESS_TIME_MS = 150;
+const uint32_t POWER_CYCLE_OFF_MS = 2000;
 
 // ============================================================
 // LED sensor
@@ -99,21 +106,83 @@ bool cameraReady = false;
 // BUTTONS
 // ============================================================
 
+uint8_t pcfAddress = 0;
+// PCF8574 powers up with all pins HIGH (quasi-bidirectional inputs).
+// Leave unused P5..P7 HIGH; keep P3 LOW (LCD backlight control).
+// The four ULN2003 control pins P0, P1, P2, P4 are LOW when released.
+const uint8_t PCF_RELEASED = 0xE0;
+uint8_t pcfOutputs = PCF_RELEASED;
+
+bool writeButtons() {
+  if (pcfAddress == 0) {
+    Serial.println("[HIL] ERROR: PCF8574 not detected");
+    return false;
+  }
+
+  Wire.beginTransmission(pcfAddress);
+  Wire.write(pcfOutputs);
+
+  if (Wire.endTransmission() != 0) {
+    Serial.println("[HIL] ERROR: PCF8574 write failed");
+    return false;
+  }
+
+  return true;
+}
+
+void initButtons() {
+  Wire.begin(PCF_SDA, PCF_SCL);
+  Wire.setClock(100000);
+  Wire.setTimeOut(50);
+
+  Serial.println("[HIL] I2C scan started");
+
+  // HW-61 boards commonly use PCF8574 (0x20-0x27) or PCF8574A (0x38-0x3F).
+  // Do not guess an address if multiple expanders are detected.
+  uint8_t found = 0;
+  for (uint8_t address = 0x20; address <= 0x3F; address++) {
+    if (address > 0x27 && address < 0x38) continue;
+    Wire.beginTransmission(address);
+    if (Wire.endTransmission() == 0) {
+      found++;
+      pcfAddress = address;
+    }
+  }
+
+  if (found != 1) {
+    pcfAddress = 0;
+    Serial.println("[HIL] ERROR: expected exactly one PCF8574 on I2C");
+    return;
+  }
+
+  Serial.printf("[HIL] PCF8574 detected at 0x%02X\n", pcfAddress);
+  pcfOutputs = PCF_RELEASED;
+  writeButtons();  // Release buttons without forcing unused pins LOW
+}
+
 void releaseAllButtons() {
-  digitalWrite(HIL_K1, LOW);
-  digitalWrite(HIL_K2, LOW);
-  digitalWrite(HIL_K3, LOW);
-  digitalWrite(HIL_K4, LOW);
+  pcfOutputs = PCF_RELEASED;
+  writeButtons();
 }
 
 void pressButton(uint8_t pin, const char* name) {
+  if (pcfAddress == 0) {
+    Serial.println("[HIL] ERROR: button expander unavailable");
+    return;
+  }
+
   Serial.printf("[HIL] %s press\n", name);
+  pcfOutputs |= (1 << pin);
+  if (!writeButtons()) {
+    pcfOutputs &= ~(1 << pin);
+    return;
+  }
 
-  digitalWrite(pin, HIGH);
   delay(PRESS_TIME_MS);
-  digitalWrite(pin, LOW);
-
-  Serial.printf("[HIL] %s release\n", name);
+  pcfOutputs &= ~(1 << pin);
+  if (writeButtons()) {
+    Serial.printf("[HIL] %s release\n", name);
+  }
 }
 
 // ============================================================
@@ -725,6 +794,18 @@ void printHelp() {
     "  k4              - emulate K4 press");
 
   Serial.println(
+    "  power_on        - enable DUT USB power");
+
+  Serial.println(
+    "  power_off       - disable DUT USB power");
+
+  Serial.println(
+    "  power_cycle     - cycle DUT power (2 seconds off)");
+
+  Serial.println(
+    "  power_status    - read power control state");
+
+  Serial.println(
     "  relay_status    - read physical relay state");
 
   Serial.println(
@@ -758,6 +839,25 @@ void printHelp() {
     "  help");
 
   Serial.println();
+}
+
+// ============================================================
+// DUT POWER
+// ============================================================
+
+void setDutPower(bool enabled) {
+  digitalWrite(DUT_POWER_EN, enabled ? HIGH : LOW);
+  Serial.printf("[HIL] DUT power: %s\n", enabled ? "ON" : "OFF");
+}
+
+void printDutPowerStatus() {
+  Serial.printf("[HIL] DUT power: %s\n", digitalRead(DUT_POWER_EN) == HIGH ? "ON" : "OFF");
+}
+
+void cycleDutPower() {
+  setDutPower(false);
+  delay(POWER_CYCLE_OFF_MS);
+  setDutPower(true);
 }
 
 // ============================================================
@@ -816,17 +916,19 @@ void setup() {
   Serial.begin(115200);
 
   delay(500);
+  Serial.println("[HIL] setup entered");
 
   // --------------------------------------------------------
   // Buttons
   // --------------------------------------------------------
 
-  pinMode(HIL_K1, OUTPUT);
-  pinMode(HIL_K2, OUTPUT);
-  pinMode(HIL_K3, OUTPUT);
-  pinMode(HIL_K4, OUTPUT);
+  // Power control does not depend on the I2C expander.
+  digitalWrite(DUT_POWER_EN, HIGH);
+  pinMode(DUT_POWER_EN, OUTPUT);
 
-  releaseAllButtons();
+  Serial.println("[HIL] initializing PCF8574");
+  initButtons();
+  Serial.println("[HIL] PCF8574 initialization finished");
 
   // --------------------------------------------------------
   // Relay
@@ -997,6 +1099,36 @@ void loop() {
     pressButton(
       HIL_K4,
       "K4");
+  }
+
+  else if (command.startsWith("pcf_test ")) {
+    int pin = command.substring(9).toInt();
+    if (command.substring(9) != String(pin) || pin < 0 || pin > 7) {
+      Serial.println("[HIL] usage: pcf_test <0..7>");
+    } else {
+      releaseAllButtons();
+      pressButton(static_cast<uint8_t>(pin), "PCF_TEST");
+    }
+  }
+
+  else if (command == "power_on") {
+
+    setDutPower(true);
+  }
+
+  else if (command == "power_off") {
+
+    setDutPower(false);
+  }
+
+  else if (command == "power_cycle") {
+
+    cycleDutPower();
+  }
+
+  else if (command == "power_status") {
+
+    printDutPowerStatus();
   }
 
   else if (

@@ -5,6 +5,7 @@ import pytest
 from lib import has_active_wifi_connection, wait_for_condition
 
 
+@pytest.mark.fw_only('1.3.0')
 @pytest.mark.first
 @pytest.mark.positive
 def test_k3_without_saved_credentials(device, hil):

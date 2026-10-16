@@ -35,6 +35,27 @@ class HILDriver:
 
     return self
 
+  def power_on(self) -> list[str]:
+    return self._connector.execute_command('power_on', until='[HIL] DUT power: ON')
+
+  def power_off(self) -> list[str]:
+    return self._connector.execute_command('power_off', until='[HIL] DUT power: OFF')
+
+  def power_cycle(self) -> list[str]:
+    return self._connector.execute_command('power_cycle', until='[HIL] DUT power: ON', timeout=10)
+  
+  def relay_status(self) -> list[str]:
+    return self._connector.execute_command(
+      'relay_status',
+      until='[HIL] RELAY:',
+    )
+    
+  def led_status(self) -> list[str]:
+    return self._connector.execute_command(
+      'led_status',
+      until=('[HIL] LED:', '[HIL] ERROR:'),
+    )
+
   def _get_camera_url(self, command: str, prefix: str) -> str:
     response = self._connector.execute_command(command)
 
@@ -48,10 +69,8 @@ class HILDriver:
 
     return line.removeprefix(prefix).strip()
 
-
   def _initialize_camera_endpoints(self) -> CameraEndpoints:
     capture_url = self._get_camera_url('camera_capture', '[HIL] Camera capture: ')
     stream_url = self._get_camera_url('camera_stream', '[HIL] Camera stream: ')
 
     return CameraEndpoints(capture_url=capture_url, stream_url=stream_url)
-  

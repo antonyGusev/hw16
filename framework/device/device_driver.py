@@ -31,8 +31,11 @@ class DeviceDriver:
   def status(self) -> list[str]:
     return self._connector.execute_command('status')
   
-  def version(self) -> list[str]:
-    return self._connector.execute_command('version', until='state:')
+  def version(self, wait=True) -> list[str]:
+    if wait:
+      return self._connector.execute_command('version', until='state:')
+    else:
+      return self._connector.write_command('version')
 
   def reboot(self) -> list[str]:
     # Reboot does not return a regular command response,

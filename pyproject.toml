@@ -33,15 +33,18 @@ python_files = ['test_*.py']
 pythonpath = ['.']
 addopts = '-v --tb=short'
 markers = [
-  'smoke: critical readiness checks',
+  'ota_gatekeeper: critical OTA checks that block the entire test run',
+  'smoke: general device smoke tests',
   'regression: regression test suite',
   'positive: positive test cases',
   'negative: negative test cases',
-  'first: tests that must run before other non-smoke tests',
+  'first: tests that must run before other regular tests',
   'min_fw(version): minimum firmware version required',
+  'fw_only(version): run test only on the specified firmware version',
 ]
 
 [tool.poe.tasks]
+gatekeeper = 'pytest -m ota_gatekeeper'
 smoke = 'pytest -m smoke'
 regression = 'pytest -m regression'
 all = 'pytest'

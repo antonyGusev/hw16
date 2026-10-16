@@ -3,10 +3,10 @@ import re
 import pytest
 
 
-@pytest.mark.smoke
+@pytest.mark.ota_gatekeeper
 @pytest.mark.positive
-def test_version_reports_firmware_partition_and_state(device):
-  response = device.version()
+def test_version_reports_firmware_partition_and_state(ota_device):
+  response = ota_device.version()
   output = '\n'.join(response)
 
   firmware = re.search(

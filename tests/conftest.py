@@ -45,7 +45,7 @@ def restore_default_lamp_state(device):
 
 def pytest_collection_modifyitems(items):
   def test_order(item):
-    if item.get_closest_marker('smoke'):
+    if item.get_closest_marker('ota_gatekeeper'):
       return 0, '', 0
 
     if item.get_closest_marker('first'):
@@ -77,24 +77,40 @@ def hil():
 
 
 @pytest.fixture(scope='session')
-def device():
+def ota_device():
   port = find_device_port()
-
   connector = UARTConnector(port)
   connector.open()
 
-  device = DeviceDriver(connector)
-
-  restore_default_lamp_state(device)
-
   try:
-    yield device
+    yield DeviceDriver(connector)
   finally:
-    try:
-      restore_default_lamp_state(device)
-      device.reboot()
-    finally:
-      connector.close()
+    connector.close()
+
+
+@pytest.fixture
+def ota_connected_device(ota_device):
+  status = ota_device.wifi.status()
+  print(f'WiFi status before connection: {status}')
+
+  if has_active_wifi_connection(ota_device):
+    return ota_device
+
+  result = ota_device.wifi.connect(SSID, PASSWORD)
+  print(f'WiFi connection result: {result}')
+
+  assert result.connected, f'Failed to prepare connected DUT: {result.response}'
+
+  return ota_device
+
+
+@pytest.fixture(scope='session')
+def device(ota_device):
+  restore_default_lamp_state(ota_device)
+
+  yield ota_device
+
+  restore_default_lamp_state(ota_device)
 
 
 @pytest.fixture
@@ -141,6 +157,11 @@ def rebooted_device(device):
 
 
 @pytest.fixture(scope='session')
+def ota_smoke_state():
+  return {}
+
+
+@pytest.fixture
 def firmware_version(device) -> Version:
   response = device.version()
 
@@ -154,17 +175,30 @@ def firmware_version(device) -> Version:
 
 
 @pytest.fixture(autouse=True)
-def check_min_firmware(request):
-  marker = request.node.get_closest_marker('min_fw')
+def check_firmware_version(request):
+  min_fw = request.node.get_closest_marker('min_fw')
+  fw_only = request.node.get_closest_marker('fw_only')
 
-  if marker is None:
+  if min_fw is None and fw_only is None:
     return
 
   firmware_version = request.getfixturevalue('firmware_version')
-  required_version = Version(marker.args[0])
 
-  if firmware_version < required_version:
-    pytest.skip(f'Requires firmware >= {required_version}, current firmware is {firmware_version}')
+  if min_fw:
+    required_version = Version(min_fw.args[0])
+
+    if firmware_version < required_version:
+      pytest.skip(
+        f'Requires firmware >= {required_version}, current firmware is {firmware_version}'
+      )
+
+  if fw_only:
+    required_version = Version(fw_only.args[0])
+
+    if firmware_version != required_version:
+      pytest.skip(
+        f'Requires firmware == {required_version}, current firmware is {firmware_version}'
+      )
 
 
 @pytest.hookimpl(hookwrapper=True)
@@ -172,5 +206,7 @@ def pytest_runtest_makereport(item, call):
   outcome = yield
   report = outcome.get_result()
 
-  if item.get_closest_marker('smoke') and report.failed:
-    item.session.shouldstop = f'Smoke test failed: {item.nodeid}. Regression aborted.'
+  if item.get_closest_marker('ota_gatekeeper') and (report.failed or report.skipped):
+    item.session.shouldstop = (
+      f'OTA Gatekeeper failed: {item.nodeid} ({report.outcome}). Testing aborted.'
+    )

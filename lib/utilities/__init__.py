@@ -7,7 +7,13 @@ from .exceptions import (
   UnexpectedResponseError,
 )
 from .flasher import FirmwareFlasher
-from .utilities import find_device_port, has_active_wifi_connection, wait_for_condition
+from .utilities import (
+  ensure_wifi_connected,
+  find_device_port,
+  has_active_wifi_connection,
+  read_firmware,
+  wait_for_condition,
+)
 
 __all__ = [
   'DeviceError',
@@ -17,7 +23,9 @@ __all__ = [
   'FrameworkError',
   'ResponseParseError',
   'UnexpectedResponseError',
+  'ensure_wifi_connected',
   'find_device_port',
   'has_active_wifi_connection',
+  'read_firmware',
   'wait_for_condition',
 ]

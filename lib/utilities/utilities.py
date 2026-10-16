@@ -1,8 +1,12 @@
+import re
 import time
 from collections.abc import Callable
 
 import pytest
+from packaging.version import Version
 from serial.tools import list_ports
+
+from config import PASSWORD, SSID
 
 
 def wait_for_condition(
@@ -24,8 +28,7 @@ def wait_for_condition(
     error_message = error_message()
 
   raise TimeoutError(
-    error_message
-    or f'Callback result is not equal to {condition} after {timeout}s'
+    error_message or f'Callback result is not equal to {condition} after {timeout}s'
   )
 
 
@@ -62,3 +65,20 @@ def has_active_wifi_connection(device) -> bool:
   status = device.wifi.status()
 
   return status.ip not in (None, '', '0.0.0.0') and status.ssid not in (None, '')
+
+
+def ensure_wifi_connected(device):
+  if not has_active_wifi_connection(device):
+    result = device.wifi.connect(SSID, PASSWORD)
+    assert result.connected, f'Wi-Fi connection failed: {result.response}'
+
+
+def read_firmware(device) -> tuple[Version, str, str]:
+  response = '\n'.join(device.version())
+  version = re.search(r'FW:\s*v(\d+\.\d+\.\d+)', response)
+  partition = re.search(r'partition:\s*(ota_[01]).*state:\s*(\w+)', response)
+
+  assert version is not None, f'Firmware version missing: {response}'
+  assert partition is not None, f'Firmware partition/state missing: {response}'
+
+  return Version(version.group(1)), partition.group(1), partition.group(2)
