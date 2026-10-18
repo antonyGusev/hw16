@@ -7,8 +7,8 @@ from lib import read_firmware
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_cli_busy_during_download(connected_device):
-  device = connected_device
+def test_ota_cli_busy_during_download(ota_connected_device):
+  device = ota_connected_device
 
   original_version, original_partition, original_state = read_firmware(device)
 

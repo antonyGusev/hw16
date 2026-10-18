@@ -9,8 +9,8 @@ from lib import has_active_wifi_connection, read_firmware
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_preserves_wifi_and_lamp_settings(connected_device, hil):
-  device = connected_device
+def test_ota_preserves_wifi_and_lamp_settings(ota_connected_device, hil):
+  device = ota_connected_device
 
   original_version, _, original_state = read_firmware(device)
   original_lamp = device.lamp.status()
@@ -115,8 +115,8 @@ def test_ota_preserves_wifi_and_lamp_settings(connected_device, hil):
 @pytest.mark.fw_only('1.5.0')
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_preserves_scenes_after_reinstall(connected_device):
-  device = connected_device
+def test_ota_preserves_scenes_after_reinstall(ota_connected_device):
+  device = ota_connected_device
 
   original_version, original_partition, original_state = read_firmware(device)
   original_lamp = device.lamp.status()

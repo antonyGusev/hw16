@@ -7,8 +7,8 @@ from lib import ensure_wifi_connected, read_firmware
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_install_from_https_url(connected_device):
-  device = connected_device
+def test_ota_install_from_https_url(ota_connected_device):
+  device = ota_connected_device
 
   if not OTA_HTTPS_URL or not OTA_HTTPS_VERSION:
     pytest.skip('OTA_HTTPS_URL or OTA_HTTPS_VERSION is not configured')

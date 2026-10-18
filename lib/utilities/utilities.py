@@ -41,6 +41,9 @@ KNOWN_USB_DEVICES = {
 }
 
 
+from config import HIL_PORT
+
+
 def find_device_port(fail_if_missing=True):
   ports = list(list_ports.comports())
 
@@ -50,11 +53,15 @@ def find_device_port(fail_if_missing=True):
 
     return None
 
-  candidates = [port for port in ports if (port.vid, port.pid) in KNOWN_USB_DEVICES]
+  candidates = [
+    port for port in ports
+    if (port.vid, port.pid) in KNOWN_USB_DEVICES
+    and port.device.upper() != HIL_PORT.upper()
+  ]
 
   if not candidates:
     if fail_if_missing:
-      pytest.fail('No supported USB serial devices found.')
+      pytest.fail('No supported DUT USB serial devices found.')
 
     return None
 

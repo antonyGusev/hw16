@@ -8,8 +8,8 @@ from lib import ensure_wifi_connected, has_active_wifi_connection, read_firmware
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_pending_verify_to_valid(connected_device):
-  device = connected_device
+def test_ota_pending_verify_to_valid(ota_connected_device):
+  device = ota_connected_device
 
   original_version, original_partition, original_state = read_firmware(device)
 
@@ -76,8 +76,8 @@ def test_ota_pending_verify_to_valid(connected_device):
 
 @pytest.mark.regression
 @pytest.mark.negative
-def test_ota_rollback_broken_image(connected_device):
-  device = connected_device
+def test_ota_rollback_broken_image(ota_connected_device):
+  device = ota_connected_device
 
   original_version, original_partition, original_state = read_firmware(device)
   original_lamp = device.lamp.status()
@@ -188,8 +188,8 @@ def test_ota_rollback_broken_image(connected_device):
 
 @pytest.mark.regression
 @pytest.mark.negative
-def test_ota_reset_during_pending_verify(connected_device, hil):
-  device = connected_device
+def test_ota_reset_during_pending_verify(ota_connected_device, hil):
+  device = ota_connected_device
   connector = device._connector
 
   original_version, original_partition, original_state = read_firmware(device)

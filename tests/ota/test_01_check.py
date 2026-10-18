@@ -30,16 +30,33 @@ def install_firmware(device, target):
 
   response = device.ota.install(str(target), force=True)
   assert '[OTA] success:' in '\n'.join(response), f'OTA install failed: {response}'
+
   device.wait_for_log("ready. Type 'help' for commands", timeout=60)
+
   version, _, _ = read_firmware(device)
   assert version == target
+
+  if not has_active_wifi_connection(device):
+    result = device.wifi.connect(SSID, PASSWORD)
+    assert result.connected, f'Wi-Fi reconnection after OTA failed: {result.response}'
   
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_check_reports_stable_and_beta_versions(connected_device):
-  device = connected_device
+def test_ota_check_reports_stable_and_beta_versions(ota_connected_device):
+  device = ota_connected_device
+
+  print(f'Wi-Fi before version: {device.wifi.status()}')
+
+  version_response = device.version()
+  print(f'Version response: {version_response}')
+
+  print(f'Wi-Fi after version: {device.wifi.status()}')
+
   original_version, _, _ = read_firmware(device)
+
+  print(f'Wi-Fi before OTA check: {device.wifi.status()}')
+
   output, stable, beta = check_channels(device)
   assert stable <= beta, f'Stable channel {stable} newer than beta {beta}: {output}'
 

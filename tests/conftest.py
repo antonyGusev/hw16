@@ -68,7 +68,8 @@ def hil():
   connector = UARTConnector(HIL_PORT)
   connector.open()
 
-  hil = HILDriver(connector).init_endpoints()
+  hil = HILDriver(connector)
+  hil.init_endpoints()
 
   try:
     yield hil

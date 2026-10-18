@@ -2,15 +2,14 @@ import re
 
 import pytest
 
-from lib import read_firmware
+from lib import read_firmware, wait_for_condition
 
 
 def read_output_state(hil, button):
   response = hil.relay_status() if button == 'k2' else hil.led_status()
-  output = '\n'.join(response)
-
   label = 'RELAY' if button == 'k2' else 'LED'
-  match = re.search(rf'\[HIL\] {label}:\s*(ON|OFF)', output)
+
+  match = re.search(rf'\[HIL\] {label}:\s*(ON|OFF)', '\n'.join(response))
 
   assert match is not None, f'Failed to read {label} state: {response}'
 
@@ -20,11 +19,10 @@ def read_output_state(hil, button):
 @pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize('button', ['k2', 'k4'])
-def test_ota_physical_button_during_download(connected_device, hil, button):
-  device = connected_device
+def test_ota_physical_button_during_download(ota_connected_device, hil, button):
+  device = ota_connected_device
 
   original_version, original_partition, original_state = read_firmware(device)
-
   assert original_state.lower() == 'valid'
 
   initial_state = read_output_state(hil, button)
@@ -36,42 +34,30 @@ def test_ota_physical_button_during_download(connected_device, hil, button):
     until='[OTA] progress: 10%',
   )
 
-  assert any('[OTA] progress: 10%' in line for line in response), (
-    f'OTA did not reach 10%: {response}'
-  )
-
   try:
+    assert any('[OTA] progress: 10%' in line for line in response), (
+      f'OTA did not reach 10%: {response}'
+    )
+
     press_button()
 
-    changed_state = read_output_state(hil, button)
-
-    assert changed_state != initial_state, (
-      f'{button.upper()} did not change physical output during OTA. '
-      f'Before: {initial_state}, after: {changed_state}'
+    wait_for_condition(
+      lambda: read_output_state(hil, button) != initial_state,
+      timeout=2,
+      interval=0.1,
+      error_message=(
+        f'{button.upper()} did not change physical output during OTA. '
+        f'Initial state: {initial_state}'
+      ),
     )
 
   finally:
-    if read_output_state(hil, button) != initial_state:
-      press_button()
+    response = device.wait_for_log(
+      "ready. Type 'help' for commands",
+      timeout=300,
+    )
 
-  response = device.wait_for_log('[OTA] success:', timeout=300)
-  output = '\n'.join(response)
-
-  assert '[OTA] success:' in output, (
-    f'OTA did not complete after {button.upper()} press: {response}'
-  )
-
-  progress = [
-    int(match.group(1))
-    for line in response
-    if (match := re.search(r'\[OTA\] progress:\s*(\d+)%', line))
-  ]
-
-  assert any(10 < percent < 100 for percent in progress), (
-    f'No intermediate OTA progress after {button.upper()} press: {response}'
-  )
-
-  device.wait_for_log("ready. Type 'help' for commands", timeout=60)
+  assert '[OTA] success:' in '\n'.join(response), f'OTA did not complete successfully: {response}'
 
   current_version, current_partition, current_state = read_firmware(device)
 

@@ -53,6 +53,8 @@ ota = 'pytest tests/ota'
 lamp = 'pytest tests/lamp'
 wifi = 'pytest tests/wifi'
 
+flash = "python flash_device.py"
+
 lint = 'ruff check .'
 format = 'ruff format .'
 init = 'pip install -e .'

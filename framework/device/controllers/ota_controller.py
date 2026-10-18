@@ -5,14 +5,20 @@ class OtaController:
   def __init__(self, connector: UARTConnector):
     self._connector = connector
 
-  def check(self) -> list[str]:
+  def check(self, until=None, timeout=60) -> list[str]:
     return self._connector.execute_command(
       'ota check',
-      until=("Type 'ota update'", 'up to date (stable)', '[OTA] failed:'),
-      timeout=60,
+      until=until
+      if until is not None
+      else (
+        "Type 'ota update'",
+        'up to date (stable)',
+        '[OTA] failed:',
+      ),
+      timeout=timeout,
     )
-    
-  def install(self, version: str, force: bool = False, until=None) -> list[str]:
+
+  def install(self, version: str, force: bool = False, until=None, timeout=300) -> list[str]:
     command = f'ota install {version}'
 
     if force:
@@ -20,37 +26,67 @@ class OtaController:
 
     return self._connector.execute_command(
       command,
-      until=until or (
+      until=until
+      if until is not None
+      else (
         '[OTA] success:',
         '[OTA] failed:',
+        '[OTA] error:',
         '[OTA] downgrade blocked:',
       ),
-      timeout=300,
+      timeout=timeout,
     )
 
-  def update(self, beta: bool = False) -> list[str]:
+  def update(self, beta: bool = False, until=None, timeout=300) -> list[str]:
     command = 'ota update beta' if beta else 'ota update'
 
     return self._connector.execute_command(
       command,
-      until=(
+      until=until
+      if until is not None
+      else (
         '[OTA] success:',
         '[OTA] already up to date',
         '[OTA] failed:',
+        '[OTA] error:',
       ),
-      timeout=300,
+      timeout=timeout,
     )
-    
-  def url(self, url: str) -> list[str]:
+
+  def url(self, url: str, until=None, timeout=300) -> list[str]:
     return self._connector.execute_command(
       f'ota {url}',
-      until=('[OTA] success:', '[OTA] failed:'),
-      timeout=300,
+      until=until
+      if until is not None
+      else (
+        '[OTA] success:',
+        '[OTA] failed:',
+        '[OTA] error:',
+      ),
+      timeout=timeout,
     )
-    
-  def test_server(self) -> list[str]:
+
+  def broken(self, until=None, timeout=300) -> list[str]:
+    return self._connector.execute_command(
+      'ota broken',
+      until=until
+      if until is not None
+      else (
+        '[OTA] success:',
+        '[OTA] failed:',
+        '[OTA] error:',
+      ),
+      timeout=timeout,
+    )
+
+  def test_server(self, until=None, timeout=120) -> list[str]:
     return self._connector.execute_command(
       'ota-test-server',
-      until=("ready. Type 'help' for commands", '[OTA] failed:'),
-      timeout=120,
+      until=until
+      if until is not None
+      else (
+        "ready. Type 'help' for commands",
+        '[OTA] failed:',
+      ),
+      timeout=timeout,
     )

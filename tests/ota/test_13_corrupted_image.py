@@ -6,8 +6,8 @@ from lib import read_firmware
 
 @pytest.mark.regression
 @pytest.mark.negative
-def test_ota_rejects_corrupted_firmware(connected_device):
-  device = connected_device
+def test_ota_rejects_corrupted_firmware(ota_connected_device):
+  device = ota_connected_device
 
   if not OTA_CORRUPTED_IMAGE:
     pytest.skip('OTA_CORRUPTED_IMAGE_URL is not configured')

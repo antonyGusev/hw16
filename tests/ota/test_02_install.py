@@ -14,7 +14,11 @@ def test_ota_install(ota_connected_device, target):
   original_version, original_partition, original_state = read_firmware(device)
   target_version = Version(target)
 
-  assert original_version < target_version
+  assert original_version < target_version, (
+    f'Expected target firmware {target_version} to be newer than '
+    f'current firmware {original_version}'
+  )
+
   assert original_state.lower() == 'valid'
 
   ensure_wifi_connected(device)
