@@ -1,6 +1,7 @@
 import pytest
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_lamp_settings_survive_reboot(lamp_on_device, hil):
   expected_rgb = (12, 34, 56)

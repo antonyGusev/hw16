@@ -28,36 +28,61 @@ def test_ota_physical_button_during_download(ota_connected_device, hil, button):
   initial_state = read_output_state(hil, button)
   press_button = getattr(hil.buttons, button)
 
-  response = device.ota.install(
+  ota_response = device.ota.install(
     str(original_version),
     force=True,
     until='[OTA] progress: 10%',
   )
 
+  physical_error = None
+  final_state = initial_state
+  button_response = []
+
   try:
-    assert any('[OTA] progress: 10%' in line for line in response), (
-      f'OTA did not reach 10%: {response}'
+    assert any('[OTA] progress: 10%' in line for line in ota_response), (
+      f'OTA did not reach 10%: {ota_response}'
     )
 
-    press_button()
+    button_response = press_button()
 
-    wait_for_condition(
-      lambda: read_output_state(hil, button) != initial_state,
-      timeout=2,
-      interval=0.1,
-      error_message=(
-        f'{button.upper()} did not change physical output during OTA. '
-        f'Initial state: {initial_state}'
-      ),
-    )
+    try:
+      wait_for_condition(
+        lambda: read_output_state(hil, button) != initial_state,
+        timeout=2,
+        interval=0.1,
+        error_message=f'{button.upper()} did not change physical output during OTA.',
+      )
+    except TimeoutError as error:
+      physical_error = error
+
+    final_state = read_output_state(hil, button)
 
   finally:
-    response = device.wait_for_log(
+    ota_response += device.wait_for_log(
       "ready. Type 'help' for commands",
       timeout=300,
     )
 
-  assert '[OTA] success:' in '\n'.join(response), f'OTA did not complete successfully: {response}'
+  button_logs = [
+    line
+    for line in ota_response
+    if re.search(r'button\s+\d+\s+pressed|\[K[1-4]\]', line, re.IGNORECASE)
+  ]
+
+  print(f'{button.upper()} HIL response: {button_response}')
+  print(f'{button.upper()} DUT logs: {button_logs}')
+  print(f'{button.upper()} physical state: {initial_state} -> {final_state}')
+
+  assert physical_error is None, (
+    f'{button.upper()} did not change physical output during OTA. '
+    f'Before: {initial_state}, after: {final_state}. '
+    f'DUT button logs: {button_logs}. '
+    f'HIL response: {button_response}'
+  )
+
+  assert '[OTA] success:' in '\n'.join(ota_response), (
+    f'OTA did not complete successfully: {ota_response}'
+  )
 
   current_version, current_partition, current_state = read_firmware(device)
 

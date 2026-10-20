@@ -7,6 +7,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize(
   ('color', 'rgb'),
@@ -31,6 +32,7 @@ def test_set_rgb_color(lamp_on_device, hil, color, rgb):
   )
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize(
   'rgb',
@@ -57,6 +59,7 @@ def test_set_rgb_boundary_values(lamp_on_device, hil, rgb):
   )
 
 
+@pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize(
   ('red', 'green', 'blue'),

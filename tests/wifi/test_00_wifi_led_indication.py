@@ -14,11 +14,13 @@ def wait_for_led_color(hil, expected_color):
   )
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_wifi_connected_led_is_green(connected_device, hil):
   wait_for_led_color(hil, 'green')
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_wifi_disconnected_led_is_red(disconnected_device, hil):
   wait_for_led_color(hil, 'red')

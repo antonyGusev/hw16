@@ -8,6 +8,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_wifi_connected_indication_is_restored_after_lamp_off(connected_device, hil):
   connected_device.led.auto()
@@ -29,6 +30,7 @@ def test_wifi_connected_indication_is_restored_after_lamp_off(connected_device, 
   )
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_wifi_disconnected_indication_is_restored_after_lamp_off(disconnected_device, hil):
   disconnected_device.led.auto()

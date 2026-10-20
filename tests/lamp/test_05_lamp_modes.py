@@ -5,6 +5,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 @pytest.mark.parametrize(
   'mode',
@@ -18,7 +19,7 @@ def response_contains(response, expected):
 def test_set_supported_mode(lamp_on_device, hil, mode):
   # Use a deterministic physical baseline so mode validation does not depend
   # on brightness or color left by a previous test.
-  lamp_on_device.lamp.set_color('white')
+  lamp_on_device.lamp.set_color('yellow')
   lamp_on_device.lamp.set_brightness(50)
 
   response = lamp_on_device.lamp.set_mode(mode)
@@ -30,6 +31,7 @@ def test_set_supported_mode(lamp_on_device, hil, mode):
   hil.camera.video.verify(mode)
 
 
+@pytest.mark.regression
 @pytest.mark.negative
 def test_reject_unknown_mode(lamp_on_device):
   initial_status = lamp_on_device.lamp.status()

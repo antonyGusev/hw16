@@ -7,6 +7,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_lamp_on(device, hil):
   try:
@@ -27,6 +28,7 @@ def test_lamp_on(device, hil):
     device.lamp.off()
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_lamp_off(device, hil):
   device.lamp.on()
@@ -49,6 +51,7 @@ def test_lamp_off(device, hil):
       device.lamp.off()
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_lamp_is_off_after_reboot(lamp_on_device, hil):
   lamp_on_device.reboot()

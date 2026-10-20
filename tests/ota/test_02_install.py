@@ -1,18 +1,18 @@
 import re
 
 import pytest
-from packaging.version import Version
 
 from lib import ensure_wifi_connected, read_firmware
 
 
 @pytest.mark.ota_gatekeeper
 @pytest.mark.positive
-@pytest.mark.parametrize('target', ['1.4.0', '1.5.0'])
-def test_ota_install(ota_connected_device, target):
+@pytest.mark.parametrize('channel', ['stable', 'beta'])
+def test_ota_install(ota_connected_device, ota_versions, channel):
   device = ota_connected_device
   original_version, original_partition, original_state = read_firmware(device)
-  target_version = Version(target)
+  target_version = ota_versions[channel]
+  target = str(target_version)
 
   assert original_version < target_version, (
     f'Expected target firmware {target_version} to be newer than '
@@ -43,11 +43,12 @@ def test_ota_install(ota_connected_device, target):
 
 @pytest.mark.ota_gatekeeper
 @pytest.mark.positive
-@pytest.mark.parametrize('target', ['1.4.0', '1.3.0'])
-def test_ota_install_force(ota_connected_device, target):
+@pytest.mark.parametrize('channel', ['stable', 'current'])
+def test_ota_install_force(ota_connected_device, ota_versions, channel):
   device = ota_connected_device
   original_version, original_partition, original_state = read_firmware(device)
-  target_version = Version(target)
+  target_version = ota_versions[channel]
+  target = str(target_version)
 
   assert original_version > target_version
   assert original_state.lower() == 'valid'
@@ -74,12 +75,12 @@ def test_ota_install_force(ota_connected_device, target):
 
 @pytest.mark.regression
 @pytest.mark.negative
-def test_ota_install_downgrade_without_force(connected_device):
+def test_ota_install_downgrade_without_force(connected_device, ota_versions):
   device = connected_device
 
   original_version, original_partition, original_state = read_firmware(device)
 
-  available = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
+  available = sorted(set(ota_versions.values()))
   older_versions = [version for version in available if version < original_version]
 
   if not older_versions:
@@ -138,12 +139,12 @@ def test_ota_install_force_reinstall_same_version(connected_device):
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_install_uses_inactive_partition(connected_device):
+def test_ota_install_uses_inactive_partition(connected_device, ota_versions):
   device = connected_device
   original_version, original_partition, original_state = read_firmware(device)
   assert original_state.lower() == 'valid'
 
-  available = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
+  available = sorted(set(ota_versions.values()))
   targets = [version for version in available if version != original_version]
   assert targets, f'No alternative firmware available for {original_version}'
   first_target = targets[-1]

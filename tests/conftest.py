@@ -13,7 +13,13 @@ from config import (
   SSID,
 )
 from framework import DeviceDriver, HILDriver
-from lib import UARTConnector, find_device_port, has_active_wifi_connection
+from lib import (
+  DeviceTimeoutError,
+  UARTConnector,
+  find_device_port,
+  has_active_wifi_connection,
+  wait_for_condition,
+)
 
 
 def restore_default_lamp_state(device):
@@ -45,20 +51,25 @@ def restore_default_lamp_state(device):
 
 def pytest_collection_modifyitems(items):
   def test_order(item):
-    if item.get_closest_marker('ota_gatekeeper'):
-      return 0, '', 0
-
     if item.get_closest_marker('first'):
-      return 1, '', 0
+      return 0, item.path.as_posix()
+    
+    if item.get_closest_marker('ota_gatekeeper'):
+      return 1, item.path.as_posix()
 
-    marker_order = 2
+    if item.get_closest_marker('smoke'):
+      return 2, item.path.as_posix()
+    
+    if item.get_closest_marker('regression'):
+      if item.get_closest_marker('positive'):
+        return 3, item.path.as_posix()
 
-    if item.get_closest_marker('positive'):
-      marker_order = 0
-    elif item.get_closest_marker('negative'):
-      marker_order = 1
+      if item.get_closest_marker('negative'):
+        return 4, item.path.as_posix()
 
-    return 2, item.path.as_posix(), marker_order
+      return 3, item.path.as_posix()
+
+    return 5, item.path.as_posix()
 
   items.sort(key=test_order)
 
@@ -68,11 +79,35 @@ def hil():
   connector = UARTConnector(HIL_PORT)
   connector.open()
 
-  hil = HILDriver(connector)
-  hil.init_endpoints()
-
   try:
-    yield hil
+    driver = HILDriver(connector)
+
+    def hil_is_ready():
+      try:
+        response = driver.help()
+        return any('[HIL] Commands:' in line for line in response)
+      except DeviceTimeoutError:
+        return False
+
+    wait_for_condition(
+      hil_is_ready,
+      timeout=30,
+      interval=0.5,
+      error_message='HIL did not become ready.',
+    )
+
+    print('HIL ready. Powering on DUT.')
+    driver.power_on()
+
+    wait_for_condition(
+      lambda: find_device_port(fail_if_missing=False) is not None,
+      timeout=30,
+      interval=0.5,
+      error_message='DUT COM port did not appear after HIL power_on.',
+    )
+
+    driver.init_endpoints()
+    yield driver
   finally:
     connector.close()
 

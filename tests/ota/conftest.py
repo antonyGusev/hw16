@@ -1,52 +1,38 @@
+import re
+
 import pytest
 import serial
+from packaging.version import Version
 
-from config import HIL_PORT
-from framework import HILDriver
+from config import PASSWORD, SSID
 from lib import (
   DeviceTimeoutError,
-  UARTConnector,
   find_device_port,
+  has_active_wifi_connection,
   wait_for_condition,
 )
 
 
 @pytest.fixture(scope='session')
-def hil():
-  connector = UARTConnector(HIL_PORT)
-  connector.open()
+def ota_versions(ota_device):
+  if not has_active_wifi_connection(ota_device):
+    result = ota_device.wifi.connect(SSID, PASSWORD)
+    assert result.connected, f'Wi-Fi connection failed: {result.response}'
 
-  try:
-    driver = HILDriver(connector)
+  response = ota_device.ota.check()
+  output = '\n'.join(response)
 
-    def hil_is_ready():
-      try:
-        response = driver.help()
-        return any('[HIL] Commands:' in line for line in response)
-      except DeviceTimeoutError:
-        return False
+  versions = {}
 
-    wait_for_condition(
-      hil_is_ready,
-      timeout=30,
-      interval=0.5,
-      error_message='HIL did not become ready.',
-    )
+  for channel in ('current', 'stable', 'beta'):
+    label = 'current version' if channel == 'current' else f'{channel} channel'
+    match = re.search(rf'\[OTA\] {label}:\s*v?(\d+\.\d+\.\d+)', output)
 
-    print('HIL ready. Powering on DUT.')
-    driver.power_on()
+    assert match is not None, f'{label} missing in OTA check: {response}'
 
-    wait_for_condition(
-      lambda: find_device_port(fail_if_missing=False) is not None,
-      timeout=30,
-      interval=0.5,
-      error_message='DUT COM port did not appear after HIL power_on.',
-    )
+    versions[channel] = Version(match.group(1))
 
-    driver.init_endpoints()
-    yield driver
-  finally:
-    connector.close()
+  return versions
 
 
 @pytest.fixture(scope='session')

@@ -1,7 +1,6 @@
 import re
 
 import pytest
-from packaging.version import Version
 
 from config import SSID
 from lib import has_active_wifi_connection, read_firmware
@@ -9,7 +8,7 @@ from lib import has_active_wifi_connection, read_firmware
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_preserves_wifi_and_lamp_settings(ota_connected_device, hil):
+def test_ota_preserves_wifi_and_lamp_settings(ota_connected_device, hil, ota_versions):
   device = ota_connected_device
 
   original_version, _, original_state = read_firmware(device)
@@ -18,7 +17,7 @@ def test_ota_preserves_wifi_and_lamp_settings(ota_connected_device, hil):
   assert original_state.lower() == 'valid'
   assert has_active_wifi_connection(device)
 
-  available = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
+  available = sorted(set(ota_versions.values()))
   newer = [version for version in available if version > original_version]
 
   if not newer:

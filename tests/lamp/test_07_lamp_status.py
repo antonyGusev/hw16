@@ -3,15 +3,12 @@ import json
 import pytest
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_lamp_status_returns_valid_json(lamp_on_device):
   response = lamp_on_device.lamp.status_raw()
 
-  json_lines = [
-    line.strip()
-    for line in response
-    if line.strip().startswith('{')
-  ]
+  json_lines = [line.strip() for line in response if line.strip().startswith('{')]
 
   assert len(json_lines) == 1
 
@@ -37,6 +34,7 @@ def test_lamp_status_returns_valid_json(lamp_on_device):
   assert type(payload['timer_s']) is int
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_lamp_status_matches_configured_state(lamp_on_device):
   lamp_on_device.lamp.set_rgb(255, 0, 128)

@@ -5,6 +5,7 @@ import pytest
 from config import SSID
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_status_reports_connected_details(connected_device):
   status = connected_device.wifi.status()
@@ -16,6 +17,7 @@ def test_status_reports_connected_details(connected_device):
   assert status.rssi is not None
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_status_reports_disconnected(disconnected_device):
   status = disconnected_device.wifi.status()

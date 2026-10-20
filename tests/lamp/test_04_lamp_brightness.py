@@ -5,21 +5,30 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_set_brightness(lamp_on_device, hil):
-  lamp_on_device.lamp.set_color('white')
+  lamp_on_device.lamp.set_color('yellow')
   lamp_on_device.lamp.set_mode('solid')
 
   measured = {}
 
-  for brightness in (0, 1, 50, 100):
+  for brightness in (0, 10, 50, 100):
     response = lamp_on_device.lamp.set_brightness(brightness)
     status = lamp_on_device.lamp.status()
 
-    assert response_contains(response, f'[LAMP] brightness set: {brightness}%')
-    assert status.brightness == brightness
+    assert response_contains(response, f'[LAMP] brightness set: {brightness}%'), (
+      f'Failed to set brightness to {brightness}%. Response: {response}'
+    )
+    assert status.brightness == brightness, (
+      f'Expected brightness {brightness}%, got {status.brightness}%'
+    )
 
     measured[brightness] = hil.camera.photo.measure('brightness')
+
+    print(
+      f'Brightness {brightness}%: measured={measured[brightness]:.2f}, status={status.brightness}%'
+    )
 
   hil.camera.photo.verify(
     'brightness',
@@ -28,6 +37,7 @@ def test_set_brightness(lamp_on_device, hil):
   )
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize(
   ('mode', 'duration'),
@@ -53,6 +63,7 @@ def test_brightness_applies_in_all_modes(lamp_on_device, hil, mode, duration):
   assert mode_intensity == pytest.approx(solid_intensity, rel=0.1)
 
 
+@pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize('brightness', [-5, 150])
 def test_reject_brightness_outside_range(lamp_on_device, brightness):

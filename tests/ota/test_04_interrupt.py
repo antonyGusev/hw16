@@ -2,7 +2,6 @@ import re
 
 import pytest
 import serial
-from packaging.version import Version
 
 from lib import (
   DeviceTimeoutError,
@@ -49,13 +48,13 @@ def recover_dut(device, hil):
 
 @pytest.mark.regression
 @pytest.mark.negative
-def test_ota_interrupt_wifi_by_k3_button(ota_connected_device, hil):
+def test_ota_interrupt_wifi_by_k3_button(ota_connected_device, hil, ota_versions):
   device = ota_connected_device
   original_version, original_partition, original_state = read_firmware(device)
 
   assert original_state.lower() == 'valid'
 
-  available = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
+  available = sorted(set(ota_versions.values()))
   newer = [version for version in available if version > original_version]
 
   if not newer:

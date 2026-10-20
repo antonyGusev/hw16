@@ -38,12 +38,13 @@ markers = [
   'regression: regression test suite',
   'positive: positive test cases',
   'negative: negative test cases',
-  'first: tests that must run before other regular tests',
+  'first: tests that must run across just flashed device',
   'min_fw(version): minimum firmware version required',
   'fw_only(version): run test only on the specified firmware version',
 ]
 
 [tool.poe.tasks]
+default_state_tests = 'pytest -m first'
 gatekeeper = 'pytest -m ota_gatekeeper'
 smoke = 'pytest -m smoke'
 regression = 'pytest -m regression'

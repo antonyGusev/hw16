@@ -8,14 +8,14 @@ from lib import ensure_wifi_connected, has_active_wifi_connection, read_firmware
 
 @pytest.mark.regression
 @pytest.mark.positive
-def test_ota_pending_verify_to_valid(ota_connected_device):
+def test_ota_pending_verify_to_valid(ota_connected_device, ota_versions):
   device = ota_connected_device
 
   original_version, original_partition, original_state = read_firmware(device)
 
   assert original_state.lower() == 'valid'
 
-  available = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
+  available = sorted(set(ota_versions.values()))
   newer = [version for version in available if version > original_version]
 
   if not newer:
@@ -188,7 +188,7 @@ def test_ota_rollback_broken_image(ota_connected_device):
 
 @pytest.mark.regression
 @pytest.mark.negative
-def test_ota_reset_during_pending_verify(ota_connected_device, hil):
+def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions):
   device = ota_connected_device
   connector = device._connector
 
@@ -196,7 +196,7 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil):
 
   assert original_state.lower() == 'valid'
 
-  available = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
+  available = sorted(set(ota_versions.values()))
   newer = [version for version in available if version > original_version]
 
   if not newer:
@@ -228,14 +228,16 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil):
       f'PENDING_VERIFY was not detected: {response}'
     )
 
+    power_response = hil.power_off()
+
+    assert any('[HIL] DUT power: OFF' in line for line in power_response), (
+      f'DUT power OFF was not confirmed: {power_response}'
+    )
+
     connector.close()
 
     try:
-      power_response = hil.power_cycle()
-
-      assert any('[HIL] DUT power: OFF' in line for line in power_response), (
-        f'DUT power OFF was not confirmed: {power_response}'
-      )
+      power_response = hil.power_on()
 
       assert any('[HIL] DUT power: ON' in line for line in power_response), (
         f'DUT power ON was not confirmed: {power_response}'

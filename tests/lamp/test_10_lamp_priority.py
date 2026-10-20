@@ -3,6 +3,7 @@ import pytest
 from test_data import SUPPORTED_COLORS
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_lamp_overrides_wifi_and_led_commands(connected_device, hil):
   expected_rgb = SUPPORTED_COLORS['blue']

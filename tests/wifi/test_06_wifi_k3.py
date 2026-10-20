@@ -23,6 +23,7 @@ def test_k3_without_saved_credentials(device, hil):
   assert not has_active_wifi_connection(device)
 
 
+@pytest.mark.smoke
 @pytest.mark.positive
 def test_k3_disconnects_wifi(connected_device, hil):
   hil.buttons.k3()
@@ -36,6 +37,7 @@ def test_k3_disconnects_wifi(connected_device, hil):
   assert not has_active_wifi_connection(connected_device)
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_k3_reconnects_wifi_after_rebooting(rebooted_device, hil):
   hil.buttons.k3()
@@ -49,6 +51,7 @@ def test_k3_reconnects_wifi_after_rebooting(rebooted_device, hil):
   assert has_active_wifi_connection(rebooted_device)
 
 
+@pytest.mark.regression
 @pytest.mark.positive
 def test_k3_reconnects_wifi_after_disconnection(disconnected_device, hil):
   hil.buttons.k3()

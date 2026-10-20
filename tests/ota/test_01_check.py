@@ -41,9 +41,9 @@ def install_firmware(device, target):
     assert result.connected, f'Wi-Fi reconnection after OTA failed: {result.response}'
   
 
-@pytest.mark.regression
+@pytest.mark.ota_gatekeeper
 @pytest.mark.positive
-def test_ota_check_reports_stable_and_beta_versions(ota_connected_device):
+def test_ota_check_reports_stable_and_beta_versions(ota_connected_device, ota_versions):
   device = ota_connected_device
 
   print(f'Wi-Fi before version: {device.wifi.status()}')
@@ -60,7 +60,7 @@ def test_ota_check_reports_stable_and_beta_versions(ota_connected_device):
   output, stable, beta = check_channels(device)
   assert stable <= beta, f'Stable channel {stable} newer than beta {beta}: {output}'
 
-  available = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
+  available = sorted(set(ota_versions.values()))
   older = [version for version in available if version < stable]
   if not older:
     pytest.skip(f'No firmware older than stable {stable} is available')
