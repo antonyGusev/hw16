@@ -24,6 +24,10 @@ class UARTConnector:
     self.port = port
     self.timeout = timeout
     self.ser: serial.Serial | None = None
+    
+  @property
+  def is_open(self) -> bool:
+    return self.ser is not None and self.ser.is_open
 
   def open(self) -> None:
     self.ser = serial.Serial(

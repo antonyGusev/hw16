@@ -22,10 +22,10 @@ class LampController:
     self._connector = connector
 
   def on(self) -> list[str]:
-    return self._connector.execute_command('lamp on', until='[LAMP]')
+    return self._connector.execute_command('lamp on', until=('[LAMP]', 'error:'))
 
   def off(self) -> list[str]:
-    return self._connector.execute_command('lamp off', until='[LAMP]')
+    return self._connector.execute_command('lamp off', until=('[LAMP]', 'error:'))
   
   def status_raw(self) -> list[str]:
     return self._connector.execute_command('lamp status', until='"lamp"')
@@ -34,25 +34,25 @@ class LampController:
     return self._parse_status(self.status_raw())
 
   def set_color(self, name: str) -> list[str]:
-    return self._connector.execute_command(f'lamp color {name}', until='[LAMP]')
+    return self._connector.execute_command(f'lamp color {name}', until=('[LAMP]', 'error:'))
 
   def set_rgb(self, red: int, green: int, blue: int) -> list[str]:
-    return self._connector.execute_command(f'lamp color {red} {green} {blue}', until='[LAMP]')
+    return self._connector.execute_command(f'lamp color {red} {green} {blue}', until=('[LAMP]', 'error:'))
 
   def set_brightness(self, brightness: int) -> list[str]:
-    return self._connector.execute_command(f'lamp brightness {brightness}', until='[LAMP]')
+    return self._connector.execute_command(f'lamp brightness {brightness}', until=('[LAMP]', 'error:'))
 
   def set_mode(self, mode: str) -> list[str]:
-    return self._connector.execute_command(f'lamp mode {mode}', until='[LAMP]')
+    return self._connector.execute_command(f'lamp mode {mode}', until=('[LAMP]', 'error:'))
 
   def set_timer(self, seconds: int) -> list[str]:
-    return self._connector.execute_command(f'lamp timer {seconds}', until='[LAMP]')
+    return self._connector.execute_command(f'lamp timer {seconds}', until=('[LAMP]', 'error:'))
 
   def save_scene(self, scene: int) -> list[str]:
-    return self._connector.execute_command(f'lamp scene save {scene}', until='[LAMP]')
+    return self._connector.execute_command(f'lamp scene save {scene}', until=('[LAMP]', 'error:'))
 
   def load_scene(self, scene: int) -> list[str]:
-    return self._connector.execute_command(f'lamp scene load {scene}', until='[LAMP]')
+    return self._connector.execute_command(f'lamp scene load {scene}', until=('[LAMP]', 'error:'))
 
   def execute(self, subcommand: str) -> list[str]:
     """Execute a raw lamp subcommand for protocol-level validation."""

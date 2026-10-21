@@ -1,6 +1,7 @@
 import pytest
 
 
+@pytest.mark.tc('TC-LAMP-028')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_lamp_settings_survive_reboot(lamp_on_device, hil):

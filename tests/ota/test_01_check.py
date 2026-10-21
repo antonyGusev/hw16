@@ -41,6 +41,7 @@ def install_firmware(device, target):
     assert result.connected, f'Wi-Fi reconnection after OTA failed: {result.response}'
   
 
+@pytest.mark.tc('TC-OTA-003')
 @pytest.mark.ota_gatekeeper
 @pytest.mark.positive
 def test_ota_check_reports_stable_and_beta_versions(ota_connected_device, ota_versions):

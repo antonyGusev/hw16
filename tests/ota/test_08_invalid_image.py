@@ -1,22 +1,26 @@
 import pytest
 
-from config import OTA_INVALID_IMAGE_HEADER
+from config import OTA_INVALID_IMAGE_HEADERS
 from lib import read_firmware
 
 
+@pytest.mark.tc('TC-OTA-022')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_ota_rejects_invalid_image_header(ota_connected_device):
   device = ota_connected_device
 
-  if not OTA_INVALID_IMAGE_HEADER:
-    pytest.skip('OTA_INVALID_IMAGE_URL is not configured')
-
   original_version, original_partition, original_state = read_firmware(device)
+  image_url = OTA_INVALID_IMAGE_HEADERS.get(str(original_version))
+
+  if not image_url:
+    version_key = str(original_version).replace('.', '_')
+    pytest.skip(f'OTA_INVALID_IMAGE_HEADER_{version_key} is not configured')
+
   assert original_state.lower() == 'valid'
 
   try:
-    response = device.ota.url(OTA_INVALID_IMAGE_HEADER)
+    response = device.ota.url(image_url)
     output = '\n'.join(response)
 
     assert '[OTA] failed: download interrupted (ESP_ERR_OTA_VALIDATE_FAILED)' in output, (
@@ -35,21 +39,25 @@ def test_ota_rejects_invalid_image_header(ota_connected_device):
     device.reboot()
 
 
+@pytest.mark.tc('TC-OTA-022')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_ota_install_after_invalid_image(ota_connected_device):
   device = ota_connected_device
 
-  if not OTA_INVALID_IMAGE_HEADER:
-    pytest.skip('OTA_INVALID_IMAGE_URL is not configured')
-
   original_version, original_partition, original_state = read_firmware(device)
+  image_url = OTA_INVALID_IMAGE_HEADERS.get(str(original_version))
+
+  if not image_url:
+    version_key = str(original_version).replace('.', '_')
+    pytest.skip(f'OTA_INVALID_IMAGE_HEADER_{version_key} is not configured')
+
   assert original_state.lower() == 'valid'
 
   installation_completed = False
 
   try:
-    response = device.ota.url(OTA_INVALID_IMAGE_HEADER)
+    response = device.ota.url(image_url)
 
     assert '[OTA] failed: download interrupted (ESP_ERR_OTA_VALIDATE_FAILED)' in '\n'.join(
       response

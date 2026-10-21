@@ -5,6 +5,7 @@ import pytest
 from lib import read_firmware
 
 
+@pytest.mark.tc('TC-OTA-025')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_cli_busy_during_download(ota_connected_device):

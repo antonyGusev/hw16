@@ -37,8 +37,6 @@ def ota_versions(ota_device):
 
 @pytest.fixture(scope='session')
 def ota_device(hil, ota_device):
-  connector = ota_device._connector
-
   def is_ready() -> bool:
     try:
       response = ota_device.version()
@@ -57,7 +55,7 @@ def ota_device(hil, ota_device):
   except TimeoutError:
     print('DUT is not responding. Performing HIL power cycle...')
 
-    connector.close()
+    ota_device.close()
     hil.power_cycle()
 
     wait_for_condition(
@@ -69,7 +67,7 @@ def ota_device(hil, ota_device):
 
     def reconnect_uart() -> bool:
       try:
-        connector.open()
+        ota_device.open()
         return True
       except serial.SerialException:
         return False

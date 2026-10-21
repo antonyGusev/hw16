@@ -3,6 +3,7 @@ import pytest
 from lib import ensure_wifi_connected, has_active_wifi_connection, read_firmware
 
 
+@pytest.mark.tc('TC-OTA-014')
 @pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize(

@@ -62,11 +62,17 @@ class OtaController:
         '[OTA] success:',
         '[OTA] failed:',
         '[OTA] error:',
+        '[OTA] downgrade blocked:',
+        '[OTA]downgrade blocked:',
       ),
       timeout=timeout,
     )
 
-  def broken(self, until=None, timeout=300) -> list[str]:
+  def broken(self, until=None, timeout=300, wait: bool = True) -> list[str] | None:
+    if not wait:
+      self._connector.write_command('ota broken')
+      return None
+
     return self._connector.execute_command(
       'ota broken',
       until=until

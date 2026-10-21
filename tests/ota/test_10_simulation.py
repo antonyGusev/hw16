@@ -3,6 +3,7 @@ import pytest
 from lib import read_firmware
 
 
+@pytest.mark.tc('TC-OTA-024')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_simulation_without_flashing(ota_connected_device):

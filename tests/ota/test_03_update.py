@@ -27,6 +27,7 @@ def restore_firmware(device, original_version):
   assert state.lower() == 'valid'
 
 
+@pytest.mark.tc('TC-OTA-004')
 @pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize('channel', ['stable', 'beta'])
@@ -75,6 +76,7 @@ def test_ota_update(connected_device, channel):
     restore_firmware(device, original_version)
 
 
+@pytest.mark.tc('TC-OTA-005')
 @pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize('channel', ['stable', 'beta'])

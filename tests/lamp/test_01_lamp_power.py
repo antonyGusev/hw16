@@ -7,6 +7,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.tc('TC-LAMP-001')
 @pytest.mark.smoke
 @pytest.mark.positive
 def test_lamp_on(device, hil):
@@ -28,6 +29,7 @@ def test_lamp_on(device, hil):
     device.lamp.off()
 
 
+@pytest.mark.tc('TC-LAMP-002')
 @pytest.mark.smoke
 @pytest.mark.positive
 def test_lamp_off(device, hil):
@@ -51,6 +53,7 @@ def test_lamp_off(device, hil):
       device.lamp.off()
 
 
+@pytest.mark.tc('TC-LAMP-003')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_lamp_is_off_after_reboot(lamp_on_device, hil):

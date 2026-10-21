@@ -5,6 +5,7 @@ from config import OTA_HTTPS_URL, OTA_HTTPS_VERSION
 from lib import ensure_wifi_connected, read_firmware
 
 
+@pytest.mark.tc('TC-OTA-023')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_install_from_https_url(ota_connected_device):

@@ -16,6 +16,7 @@ def read_output_state(hil, button):
   return match.group(1)
 
 
+@pytest.mark.tc('TC-OTA-026')
 @pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize('button', ['k2', 'k4'])

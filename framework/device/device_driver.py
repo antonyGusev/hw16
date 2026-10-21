@@ -36,6 +36,12 @@ class DeviceDriver:
       return self._connector.execute_command('version', until='state:')
     else:
       return self._connector.write_command('version')
+    
+  def open(self) -> None:
+    self._connector.open()
+
+  def close(self) -> None:
+    self._connector.close()
 
   def reboot(self) -> list[str]:
     # Reboot does not return a regular command response,
@@ -46,3 +52,7 @@ class DeviceDriver:
 
   def wait_for_log(self, pattern: str, timeout: float = 5) -> list[str]:
     return self._connector.wait_for_response(pattern, timeout)
+  
+  @property
+  def is_open(self) -> bool:
+    return self._connector.is_open

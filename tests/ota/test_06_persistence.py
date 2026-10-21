@@ -3,9 +3,10 @@ import re
 import pytest
 
 from config import PASSWORD, SSID
-from lib import ensure_wifi_connected, has_active_wifi_connection, read_firmware
+from lib import has_active_wifi_connection, read_firmware
 
 
+@pytest.mark.tc('TC-OTA-015')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_preserves_wifi_and_lamp_settings(ota_connected_device, hil, ota_versions):
@@ -111,6 +112,7 @@ def test_ota_preserves_wifi_and_lamp_settings(ota_connected_device, hil, ota_ver
       device.lamp.on()
 
 
+@pytest.mark.tc('TC-OTA-017')
 @pytest.mark.fw_min('1.4.0')
 @pytest.mark.regression
 @pytest.mark.positive
@@ -181,7 +183,7 @@ def test_ota_preserves_settings_after_force_downgrade(ota_connected_device, ota_
 
     if current_version != original_version:
       if not has_active_wifi_connection(device):
-        result = device.wifi.connect()
+        result = device.wifi.connect(SSID, PASSWORD)
         assert result.connected, f'Failed to restore Wi-Fi connection: {result.response}'
 
       response = device.ota.install(str(original_version), force=True)
@@ -204,6 +206,7 @@ def test_ota_preserves_settings_after_force_downgrade(ota_connected_device, ota_
       device.lamp.on()
 
 
+@pytest.mark.tc('TC-OTA-016')
 @pytest.mark.fw_only('1.5.0')
 @pytest.mark.regression
 @pytest.mark.positive

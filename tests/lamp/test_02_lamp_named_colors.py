@@ -7,6 +7,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.tc('TC-LAMP-004')
 @pytest.mark.smoke
 @pytest.mark.positive
 @pytest.mark.parametrize(
@@ -33,6 +34,7 @@ def test_set_named_color(lamp_on_device, hil, color, expected_rgb):
   )
 
 
+@pytest.mark.tc('TC-LAMP-005')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_reject_unknown_named_color(lamp_on_device):

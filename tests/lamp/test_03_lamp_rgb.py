@@ -7,6 +7,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.tc('TC-LAMP-006')
 @pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize(
@@ -32,6 +33,7 @@ def test_set_rgb_color(lamp_on_device, hil, color, rgb):
   )
 
 
+@pytest.mark.tc('TC-LAMP-007')
 @pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize(
@@ -59,6 +61,7 @@ def test_set_rgb_boundary_values(lamp_on_device, hil, rgb):
   )
 
 
+@pytest.mark.tc('TC-LAMP-008')
 @pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize(

@@ -7,6 +7,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.tc('TC-LAMP-019')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_timer_expires_and_turns_lamp_off(lamp_on_device, hil):
@@ -28,6 +29,7 @@ def test_timer_expires_and_turns_lamp_off(lamp_on_device, hil):
   )
 
 
+@pytest.mark.tc('TC-LAMP-020')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_cancel_active_timer(lamp_on_device, hil):
@@ -49,6 +51,7 @@ def test_cancel_active_timer(lamp_on_device, hil):
   assert lamp_on_device.lamp.status().is_on
 
 
+@pytest.mark.tc('TC-LAMP-021')
 @pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize('seconds', [1, 3600])
@@ -66,6 +69,7 @@ def test_timer_accepts_boundary_values(lamp_on_device, seconds):
   assert lamp_on_device.lamp.status().timer_s == 0
 
 
+@pytest.mark.tc('TC-LAMP-024')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_timer_is_not_preserved_after_reboot(lamp_on_device, hil):
@@ -85,6 +89,7 @@ def test_timer_is_not_preserved_after_reboot(lamp_on_device, hil):
   )
 
 
+@pytest.mark.tc('TC-LAMP-022')
 @pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize('seconds', [-1, 3601])
@@ -98,6 +103,7 @@ def test_reject_invalid_timer(lamp_on_device, seconds):
   assert status.timer_s == 0
 
 
+@pytest.mark.tc('TC-LAMP-023')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_reject_timer_when_lamp_is_off(device):

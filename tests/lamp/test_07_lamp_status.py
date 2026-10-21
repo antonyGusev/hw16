@@ -3,6 +3,7 @@ import json
 import pytest
 
 
+@pytest.mark.tc('TC-LAMP-025')
 @pytest.mark.smoke
 @pytest.mark.positive
 def test_lamp_status_returns_valid_json(lamp_on_device):
@@ -34,6 +35,7 @@ def test_lamp_status_returns_valid_json(lamp_on_device):
   assert type(payload['timer_s']) is int
 
 
+@pytest.mark.tc('TC-LAMP-026')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_lamp_status_matches_configured_state(lamp_on_device):

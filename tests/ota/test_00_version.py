@@ -3,6 +3,7 @@ import re
 import pytest
 
 
+@pytest.mark.tc('TC-OTA-001')
 @pytest.mark.ota_gatekeeper
 @pytest.mark.positive
 def test_version_reports_firmware_partition_and_state(ota_device):
@@ -25,6 +26,7 @@ def test_version_reports_firmware_partition_and_state(ota_device):
   assert partition.group(3).strip(), f'OTA image state is empty: {response}'
 
 
+@pytest.mark.tc('TC-OTA-002')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_firmware_version_matches_boot_log_and_ota_check(connected_device):

@@ -46,6 +46,7 @@ def recover_dut(device, hil):
   )
 
 
+@pytest.mark.tc('TC-OTA-012')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_ota_interrupt_wifi_by_k3_button(ota_connected_device, hil, ota_versions):
@@ -152,11 +153,11 @@ def test_ota_interrupt_wifi_by_k3_button(ota_connected_device, hil, ota_versions
     raise
 
 
+@pytest.mark.tc('TC-OTA-021')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_ota_interrupt_power(ota_connected_device, hil):
   device = ota_connected_device
-  connector = device._connector
 
   try:
     original_version, original_partition, original_state = read_firmware(device)
@@ -175,12 +176,12 @@ def test_ota_interrupt_power(ota_connected_device, hil):
 
     def reconnect_uart():
       try:
-        connector.open()
+        device.open()
         return True
       except (serial.SerialException, OSError):
         return False
 
-    connector.close()
+    device.close()
 
     try:
       response = hil.power_cycle()

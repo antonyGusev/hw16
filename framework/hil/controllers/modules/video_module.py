@@ -30,6 +30,12 @@ BREATHE_MIN_AMPLITUDE_RATIO = 0.05
 BREATHE_MIN_SAMPLES = 10
 BREATHE_SMOOTHING_WINDOW = 7
 
+RAINBOW_DURATION = 12.0
+RAINBOW_MIN_SAMPLES = 30
+RAINBOW_MIN_HUE_SECTORS = 5
+RAINBOW_MIN_HUE_PROGRESS = 150
+RAINBOW_MAX_REVERSE_RATIO = 0.2
+
 VideoMeasurement = Literal['max_brightness']
 
 
@@ -50,6 +56,7 @@ VideoCheck = Literal[
   'stable_color',
   'blink',
   'breathe',
+  'rainbow',
 ]
 
 
@@ -58,6 +65,7 @@ VERIFICATION_CONFIGS: dict[VideoCheck, VerificationConfig] = {
   'stable_color': VerificationConfig(SOLID_DURATION, SOLID_STABILIZATION_TIME),
   'blink': VerificationConfig(BLINK_DURATION),
   'breathe': VerificationConfig(BREATHE_DURATION),
+  'rainbow': VerificationConfig(RAINBOW_DURATION),
 }
 
 
@@ -83,6 +91,7 @@ class VideoModule(BaseCameraModule):
       'stable_color': self._validate_stable_color,
       'blink': self._validate_blink,
       'breathe': self._validate_breathe,
+      'rainbow': self._validate_rainbow,
     }
 
     artifact_name = name or f'mode_{check}'
@@ -230,6 +239,49 @@ class VideoModule(BaseCameraModule):
         f'Expected: {BREATHE_EXPECTED_PERIOD}s ± '
         f'{BREATHE_PERIOD_TOLERANCE}s, '
         f'actual: {periods.tolist()}.'
+      )
+
+  def _validate_rainbow(self, observation: VideoObservation) -> None:
+    """Verify continuous hue cycling in one direction across the color wheel."""
+    hues = []
+
+    for frame in observation.frames:
+      try:
+        hue, _, _ = self.measure_roi_color(frame)
+      except RuntimeError as error:
+        if 'No valid color pixels' not in str(error):
+          raise
+        continue
+
+      hues.append(hue)
+
+    if len(hues) < RAINBOW_MIN_SAMPLES:
+      raise AssertionError(
+        f'Not enough chromatic camera samples for rainbow validation. '
+        f'Expected at least {RAINBOW_MIN_SAMPLES}, actual: {len(hues)}.'
+      )
+
+    # OpenCV hue wraps at 180; map consecutive differences into [-90, 90).
+    # This preserves the direction when the hue crosses from red to red.
+    differences = (np.diff(np.asarray(hues, dtype=float)) + 90) % 180 - 90
+    forward = float(np.sum(np.maximum(differences, 0)))
+    backward = float(np.sum(np.maximum(-differences, 0)))
+    progress = forward - backward
+    sectors = {hue // 30 for hue in hues}
+
+    if (
+      len(sectors) < RAINBOW_MIN_HUE_SECTORS
+      or abs(progress) < RAINBOW_MIN_HUE_PROGRESS
+      or min(forward, backward) > max(forward, backward) * RAINBOW_MAX_REVERSE_RATIO
+    ):
+      raise AssertionError(
+        f'Invalid rainbow color cycling. '
+        f'Expected at least {RAINBOW_MIN_HUE_SECTORS} hue sectors, '
+        f'{RAINBOW_MIN_HUE_PROGRESS} degrees of net hue progress '
+        f'and no more than {RAINBOW_MAX_REVERSE_RATIO:.0%} reverse motion. '
+        f'Actual: {len(sectors)} sectors, net progress {progress:.1f}, '
+        f'forward {forward:.1f}, backward {backward:.1f}; '
+        f'sectors: {sorted(sectors)}.'
       )
 
   def _collect_observation(

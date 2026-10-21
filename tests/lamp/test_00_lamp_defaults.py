@@ -3,6 +3,7 @@ import pytest
 from test_data import SUPPORTED_COLORS
 
 
+@pytest.mark.tc('TC-LAMP-027')
 @pytest.mark.first
 @pytest.mark.positive
 def test_default_lamp_state_on_clean_device(device):

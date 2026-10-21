@@ -6,6 +6,7 @@ from config import SSID
 from lib import ensure_wifi_connected, has_active_wifi_connection, read_firmware, wait_for_condition
 
 
+@pytest.mark.tc('TC-OTA-018')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_pending_verify_to_valid(ota_connected_device, ota_versions):
@@ -32,10 +33,7 @@ def test_ota_pending_verify_to_valid(ota_connected_device, ota_versions):
 
     assert '[OTA] success:' in output, f'OTA installation failed: {response}'
 
-    boot_logs = device.wait_for_log(
-      "ready. Type 'help' for commands",
-      timeout=60,
-    )
+    boot_logs = device.wait_for_log("ready. Type 'help' for commands", timeout=60)
 
     boot_output = '\n'.join(boot_logs)
 
@@ -74,6 +72,7 @@ def test_ota_pending_verify_to_valid(ota_connected_device, ota_versions):
       assert restored_state.lower() == 'valid'
 
 
+@pytest.mark.tc('TC-OTA-019')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_ota_rollback_broken_image(ota_connected_device):
@@ -118,12 +117,9 @@ def test_ota_rollback_broken_image(ota_connected_device):
       device.lamp.set_brightness(expected_brightness)
       device.lamp.set_mode(expected_mode)
 
-    device._connector.write_command('ota broken')
+    device.ota.broken(wait=False)
 
-    response = device.wait_for_log(
-      'rolling back to previous firmware...',
-      timeout=120,
-    )
+    response = device.wait_for_log('rolling back to previous firmware...', timeout=120)
 
     output = '\n'.join(response)
 
@@ -186,12 +182,11 @@ def test_ota_rollback_broken_image(ota_connected_device):
       device.lamp.off()
 
 
+@pytest.mark.tc('TC-OTA-020')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions):
   device = ota_connected_device
-  connector = device._connector
-
   original_version, original_partition, original_state = read_firmware(device)
 
   assert original_state.lower() == 'valid'
@@ -206,10 +201,10 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions
 
   def reconnect_uart():
     try:
-      connector.open()
+      device.open()
       return True
     except (serial.SerialException, OSError):
-      connector.close()
+      device.close()
       return False
 
   try:
@@ -220,8 +215,7 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions
     assert '[OTA] success:' in '\n'.join(response), f'OTA installation failed: {response}'
 
     response = device.wait_for_log(
-      '[OTA] new firmware, state PENDING_VERIFY - running self-check...',
-      timeout=60,
+      '[OTA] new firmware, state PENDING_VERIFY - running self-check...', timeout=60
     )
 
     assert any('PENDING_VERIFY' in line for line in response), (
@@ -234,7 +228,7 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions
       f'DUT power OFF was not confirmed: {power_response}'
     )
 
-    connector.close()
+    device.close()
 
     try:
       power_response = hil.power_on()
@@ -251,10 +245,7 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions
         error_message='DUT UART did not recover after power cycle.',
       )
 
-    device.wait_for_log(
-      "ready. Type 'help' for commands",
-      timeout=60,
-    )
+    device.wait_for_log("ready. Type 'help' for commands", timeout=60)
 
     current_version, current_partition, current_state = read_firmware(device)
 
@@ -269,7 +260,7 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions
     assert current_state.lower() == 'valid'
 
   finally:
-    if connector.ser is not None and connector.ser.is_open:
+    if device.is_open:
       current_version, _, _ = read_firmware(device)
 
       if current_version != original_version:
@@ -281,7 +272,4 @@ def test_ota_reset_during_pending_verify(ota_connected_device, hil, ota_versions
           f'Failed to restore original firmware: {response}'
         )
 
-        device.wait_for_log(
-          "ready. Type 'help' for commands",
-          timeout=60,
-        )
+        device.wait_for_log("ready. Type 'help' for commands", timeout=60)

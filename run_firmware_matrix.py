@@ -3,8 +3,8 @@
 Run from the hw16 project root: python run_firmware_matrix.py
 """
 
-import subprocess
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -13,7 +13,6 @@ from packaging.version import Version
 from config import PASSWORD, SSID
 from framework import DeviceDriver
 from lib import UARTConnector, find_device_port, has_active_wifi_connection, read_firmware
-
 
 ROOT = Path(__file__).resolve().parent
 VERSIONS = (Version('1.3.0'), Version('1.4.0'), Version('1.5.0'))
@@ -60,7 +59,9 @@ def run_pytest(label: str, args: list[str], allow_failures: bool = True) -> bool
   returncode = process.wait()
   if report_lines:
     report = ''.join(report_lines)
-    skipped = [line for line in report.splitlines() if re.match(r'^SKIPPED\s+', ANSI_ESCAPE.sub('', line))]
+    skipped = [
+      line for line in report.splitlines() if re.match(r'^SKIPPED\s+', ANSI_ESCAPE.sub('', line))
+    ]
     if skipped:
       print(f'\nSkipped tests in {label}:', flush=True)
       for line in skipped:
@@ -146,9 +147,7 @@ def main() -> int:
     check_version(version)
 
     # The empty scene must be checked before other 1.5.0 tests save scenes.
-    if version >= Version('1.5.0') and not run_pytest(
-      f'{version}: empty scene', [SCENE_FIRST]
-    ):
+    if version >= Version('1.5.0') and not run_pytest(f'{version}: empty scene', [SCENE_FIRST]):
       failed_stages.append(f'{version}: empty scene')
 
     if not run_pytest(f'{version}: suite', ['-m', 'not first and not ota_gatekeeper']):

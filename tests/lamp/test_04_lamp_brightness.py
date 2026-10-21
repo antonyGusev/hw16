@@ -5,6 +5,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
+@pytest.mark.tc('TC-LAMP-009')
 @pytest.mark.smoke
 @pytest.mark.positive
 def test_set_brightness(lamp_on_device, hil):
@@ -37,6 +38,7 @@ def test_set_brightness(lamp_on_device, hil):
   )
 
 
+@pytest.mark.tc('TC-LAMP-012')
 @pytest.mark.regression
 @pytest.mark.positive
 @pytest.mark.parametrize(
@@ -63,6 +65,7 @@ def test_brightness_applies_in_all_modes(lamp_on_device, hil, mode, duration):
   assert mode_intensity == pytest.approx(solid_intensity, rel=0.1)
 
 
+@pytest.mark.tc('TC-LAMP-011')
 @pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize('brightness', [-5, 150])

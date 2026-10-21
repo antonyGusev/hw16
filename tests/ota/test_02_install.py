@@ -5,6 +5,7 @@ import pytest
 from lib import ensure_wifi_connected, read_firmware
 
 
+@pytest.mark.tc('TC-OTA-006')
 @pytest.mark.ota_gatekeeper
 @pytest.mark.positive
 @pytest.mark.parametrize('channel', ['stable', 'beta'])
@@ -41,6 +42,7 @@ def test_ota_install(ota_connected_device, ota_versions, channel):
   assert state.lower() == 'valid'
 
 
+@pytest.mark.tc('TC-OTA-008')
 @pytest.mark.ota_gatekeeper
 @pytest.mark.positive
 @pytest.mark.parametrize('channel', ['stable', 'current'])
@@ -73,6 +75,7 @@ def test_ota_install_force(ota_connected_device, ota_versions, channel):
   assert state.lower() == 'valid'
 
 
+@pytest.mark.tc('TC-OTA-007')
 @pytest.mark.regression
 @pytest.mark.negative
 def test_ota_install_downgrade_without_force(connected_device, ota_versions):
@@ -105,6 +108,7 @@ def test_ota_install_downgrade_without_force(connected_device, ota_versions):
   assert state.lower() == 'valid'
 
 
+@pytest.mark.tc('TC-OTA-009')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_install_force_reinstall_same_version(connected_device):
@@ -137,6 +141,7 @@ def test_ota_install_force_reinstall_same_version(connected_device):
   assert state.lower() == 'valid'
 
 
+@pytest.mark.tc('TC-OTA-010')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_install_uses_inactive_partition(connected_device, ota_versions):
@@ -185,6 +190,7 @@ def test_ota_install_uses_inactive_partition(connected_device, ota_versions):
       assert restored_state.lower() == 'valid'
 
 
+@pytest.mark.tc('TC-OTA-011')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_ota_install_reports_complete_progress(connected_device):
