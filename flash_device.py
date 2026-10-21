@@ -18,7 +18,7 @@ def wait_for_device(port: str, timeout: float = 15) -> None:
 
       response = device.help()
 
-      return any(re.match(r'^\s*version(?:\s|$)', line) for line in response)
+      return any(re.search(r'wifi station:\s+version\s+-', line) for line in response)
     except (serial.SerialException, OSError):
       connector.close()
       return False

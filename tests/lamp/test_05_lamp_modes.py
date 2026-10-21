@@ -13,7 +13,7 @@ def response_contains(response, expected):
     'solid',
     'blink',
     'breathe',
-    pytest.param('rainbow', marks=pytest.mark.min_fw('1.5.0')),
+    pytest.param('rainbow', marks=pytest.mark.fw_min('1.5.0')),
   ],
 )
 def test_set_supported_mode(lamp_on_device, hil, mode):

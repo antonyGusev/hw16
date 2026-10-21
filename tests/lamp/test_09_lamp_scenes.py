@@ -5,7 +5,7 @@ def response_contains(response, expected):
   return any(expected in line for line in response)
 
 
-@pytest.mark.min_fw('1.5.0')
+@pytest.mark.fw_min('1.5.0')
 @pytest.mark.regression
 @pytest.mark.first
 @pytest.mark.negative
@@ -28,7 +28,7 @@ def test_reject_loading_empty_scene(lamp_on_device):
   assert status == initial_status
 
 
-@pytest.mark.min_fw('1.5.0')
+@pytest.mark.fw_min('1.5.0')
 @pytest.mark.smoke
 @pytest.mark.positive
 @pytest.mark.parametrize(
@@ -60,7 +60,7 @@ def test_save_and_load_scene(lamp_on_device, scene, rgb, brightness, mode):
   assert status.mode == mode
 
 
-@pytest.mark.min_fw('1.5.0')
+@pytest.mark.fw_min('1.5.0')
 @pytest.mark.regression
 @pytest.mark.positive
 def test_scene_survives_reboot(lamp_on_device):
@@ -85,7 +85,7 @@ def test_scene_survives_reboot(lamp_on_device):
   assert status.mode == expected_mode
 
 
-@pytest.mark.min_fw('1.5.0')
+@pytest.mark.fw_min('1.5.0')
 @pytest.mark.regression
 @pytest.mark.negative
 @pytest.mark.parametrize(

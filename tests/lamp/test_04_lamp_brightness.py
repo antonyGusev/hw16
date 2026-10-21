@@ -45,7 +45,7 @@ def test_set_brightness(lamp_on_device, hil):
     ('blink', 3.0),
     ('breathe', 7.0),
     # Rainbow completes one full color cycle in approximately 5 seconds.
-    pytest.param('rainbow', 6.0, marks=pytest.mark.min_fw('1.5.0')),
+    pytest.param('rainbow', 6.0, marks=pytest.mark.fw_min('1.5.0')),
   ],
 )
 def test_brightness_applies_in_all_modes(lamp_on_device, hil, mode, duration):

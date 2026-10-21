@@ -39,8 +39,9 @@ markers = [
   'positive: positive test cases',
   'negative: negative test cases',
   'first: tests that must run across just flashed device',
-  'min_fw(version): minimum firmware version required',
+  'fw_min(version): minimum firmware version required',
   'fw_only(version): run test only on the specified firmware version',
+  'tc(id): test case ID from CHECK_LIST.md',
 ]
 
 [tool.poe.tasks]
@@ -49,10 +50,10 @@ gatekeeper = 'pytest -m ota_gatekeeper'
 smoke = 'pytest -m smoke'
 regression = 'pytest -m regression'
 all = 'pytest'
+full_cycle = 'python run_firmware_matrix.py'
 
 ota = 'pytest tests/ota'
 lamp = 'pytest tests/lamp'
-wifi = 'pytest tests/wifi'
 
 flash = "python flash_device.py"
 

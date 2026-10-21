@@ -212,16 +212,16 @@ def firmware_version(device) -> Version:
 
 @pytest.fixture(autouse=True)
 def check_firmware_version(request):
-  min_fw = request.node.get_closest_marker('min_fw')
+  fw_min = request.node.get_closest_marker('fw_min')
   fw_only = request.node.get_closest_marker('fw_only')
 
-  if min_fw is None and fw_only is None:
+  if fw_min is None and fw_only is None:
     return
 
   firmware_version = request.getfixturevalue('firmware_version')
 
-  if min_fw:
-    required_version = Version(min_fw.args[0])
+  if fw_min:
+    required_version = Version(fw_min.args[0])
 
     if firmware_version < required_version:
       pytest.skip(
