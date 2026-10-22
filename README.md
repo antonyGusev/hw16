@@ -64,35 +64,27 @@ HIL_CAMERA_URL=http://<hil-ip>/capture
 
 ## Running Tests
 
-Run the complete regression suite:
+Run commands from the project root:
+
+| Command | Purpose |
+|---|---|
+| `poe full_cycle` | Full flash of 1.3.0, OTA gatekeeper, then test suites on 1.3.0 → 1.4.0 → 1.5.0 |
+| `poe flash` | Erase and flash `FIRMWARE_PATH` from `config.py` |
+| `poe default_state_tests` | Tests marked `first` |
+| `poe gatekeeper` | Critical OTA tests marked `ota_gatekeeper` |
+| `poe smoke` | Smoke tests |
+| `poe regression` | Tests marked `regression` |
+| `poe all` | All pytest tests on the current firmware |
+| `poe ota` / `poe lamp` | OTA or Smart Lamp tests only |
+
+Run an individual test or filter by marker using pytest:
 
 ```bash
-poe regression
+pytest tests/lamp/test_01_lamp_power.py::test_lamp_on
+pytest -m negative
 ```
 
-Run Wi-Fi positive tests:
-
-```bash
-poe positive_tests
-```
-
-Tests can also be executed directly with pytest:
-
-```bash
-pytest tests
-```
-
-Run a specific test:
-
-```bash
-pytest tests/wifi/test_wifi_positive.py::test_connect_using_ssid
-```
-
-Use verbose output:
-
-```bash
-pytest tests -v
-```
+**Note:** `poe full_cycle` and `poe flash` erase/reflash the DUT. Other commands run against the firmware currently installed.
 
 ## Project Structure
 
