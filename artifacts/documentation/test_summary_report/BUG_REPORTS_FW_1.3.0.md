@@ -3,11 +3,65 @@
 **Test environment:** ESP32-S3 Smart Lamp DUT; UART / pytest / HIL automation; HIL camera and button/relay sensing.
 **Detected on:** FW `1.3.0` (firmware stage in the latest supplied matrix run).  
 **Test date:** 2026-10-21 (date the run was supplied; the console extract itself does not give wall-clock start time).  
-**Evidence source:** latest pytest firmware-matrix output; suite **14 failed, 66 passed, 13 skipped, 8 deselected**.
-**Reproducibility:** `1/1` in the supplied run for each listed failed parameter/case; repeated-run reproduction rates are not inferred.  
+**Evidence source:** latest pytest firmware-matrix output; suite **14 failed, 66 passed, 13 skipped, 8 deselected**; separate post-flash boot observation shown in `screenshots/flashing.png`.
+**Reproducibility:** `1/1` in the supplied run for each listed failed parameter/case; the post-flash startup issue is documented in one screenshot, without a confirmed rerun rate.  
 **Hardware revision / firmware build ID:** ESP32-S3 platform known; exact board revision and build identifiers not present in this run excerpt.  
 
 > **Note:** Existing `BUG-*` IDs are retained. Regression issues use `REGRESSION-*` IDs. Classification does not by itself establish a firmware root cause. Severity/priority are proposals, not approved classifications. A pytest FAILED case is not automatically a firmware bug. HIL media can be overwritten across runs; a named file without a firmware identifier does not by itself prove the capture originated in this exact stage.
+
+## BUG-BOOT-001 — Firmware 1.3.0 does not start responding after flashing until the device is rebooted
+
+| Field | Details |
+|---|---|
+| **ID** | `BUG-BOOT-001` |
+| **Title** | Firmware 1.3.0 is unresponsive after flashing and requires an additional reboot/power cycle |
+| **Found in** | `1.3.0` |
+| **Other firmware stages in this run** | `1.4.0`: Not tested for this post-flash scenario; `1.5.0`: Not tested for this post-flash scenario |
+| **Severity / Priority** | **Major / High** (proposed) |
+| **Requirement(s)** | Post-flash startup/readiness; no specific FR/NFR ID established from the provided materials |
+| **Test Case ID** | Not assigned — observed during full firmware flashing before pytest execution |
+| **Automated test / script** | `flash_device.py`, invoked by `run_firmware_matrix.py` through `poe full_cycle` |
+| **Category** | Post-flash startup defect; root cause not yet isolated |
+| **Reproducibility** | **One documented occurrence** in the supplied screenshot; repeatability not established |
+
+**Preconditions**
+
+- ESP32-S3 Smart Lamp DUT; target firmware `1.3.0`.
+- Full flashing procedure available through `poe full_cycle` / `flash_device.py`.
+- HIL controller can power-cycle the DUT.
+
+**Steps to reproduce**
+
+1. Perform a full flash of firmware `1.3.0` using `poe full_cycle` (which invokes `flash_device.py`).
+2. Allow the flashing process to finish and `esptool` to perform its normal `Hard resetting via RTS pin...` step.
+3. Without manually rebooting the device, attempt to communicate with it through the UART console (`help` is used by `flash_device.py` to check readiness).
+4. Observe that the DUT does not become responsive during the initial readiness check.
+5. Reboot/power-cycle the device and repeat the readiness check.
+
+**Expected result:** After successful flashing and the normal programmer-triggered reset, the DUT starts firmware `1.3.0` and responds to UART commands without requiring any additional manual reboot or power cycle.
+
+**Actual result:** Flash write and verification complete, but the DUT remains unresponsive during the post-flash readiness check. An additional reboot/power cycle is required; the DUT responds afterward. The project's flashing script recovers automatically through the HIL power-cycle fallback.
+
+**Evidence — flashing console screenshot**
+
+```text
+=== Full flash: 1.3.0 ===
+...
+Hash of data verified.
+Hard resetting via RTS pin...
+DUT is not responding. Performing HIL power cycle...
+DUT recovered after power cycle.
+```
+
+![Flash of FW 1.3.0 — DUT recovered only after HIL power cycle](screenshots/flashing.png)
+
+[Open full flashing screenshot](screenshots/flashing.png)
+
+**UART logs:** Not available. The evidence is the flashing-script console output and the reported requirement to reboot the DUT before it works.
+
+**Note:** The console screenshot confirms a post-flash responsiveness failure and successful recovery after a power cycle. It does not establish the internal reason for the stall or distinguish a firmware boot issue from reset sequencing / flashing-tool behavior. No regression classification is assigned without evidence that this exact scenario passed on another firmware version. This issue is separate from the pytest failure counts below.
+
+---
 
 ## BUG-OTA-001 — OTA retry is blocked after Wi-Fi interruption via K3
 
@@ -307,6 +361,7 @@ I (5809) wifi station: [LAMP] brightness set: 150%
 
 | Issue ID | Area / symptom | Number of FAILED cases | Classification |
 |---|---|---:|---|
+| `BUG-BOOT-001` | Post-flash firmware 1.3.0 unresponsive until reboot/power cycle | 0 (separate flashing observation) | Post-flash startup; root cause not isolated |
 | `BUG-OTA-001` | OTA retry is blocked after Wi-Fi interruption via K3 | 1 | Candidate firmware defect |
 | `BUG-OTA-002` | `ota-test-server` reports no-Wi-Fi error without the expected `[OTA]` prefix | 1 | Firmware CLI contract / automation parser mismatch |
 | `BUG-OTA-003` | OTA stays locked after an invalid image is rejected | 1 | Candidate firmware OTA cleanup defect |
@@ -314,7 +369,7 @@ I (5809) wifi station: [LAMP] brightness set: 150%
 | `BUG-LAMP-002` | Wi-Fi disconnected LED indication is not red after `lamp off` | 1 | Physical LED indication mismatch |
 | `BUG-LAMP-003` | Out-of-range lamp brightness values are accepted | 2 | Firmware input-validation defect |
 
-**Total: 6 issue records accounting for all 14 FAILED pytest cases.** These are counts of failures, not confirmed unique root causes.
+**Total: 7 issue records — 6 issues accounting for all 14 FAILED pytest cases, plus 1 separately observed post-flash startup issue (`BUG-BOOT-001`).** The post-flash issue does not change the pytest totals. These are observations, not confirmed unique root causes.
 
 ## Full-run screenshots
 

@@ -1,11 +1,12 @@
 # Bug–Requirement Matrix
 
-**Source:** Latest firmware-matrix run (1.3.0 → 1.4.0 → 1.5.0) and the corresponding full bug reports. **Run date:** October 21, 2026. Keep the reports in the same directory as this matrix.
+**Source:** Latest firmware-matrix run (1.3.0 → 1.4.0 → 1.5.0), the corresponding full bug reports, and a separate post-flash startup observation for FW 1.3.0. **Run date:** October 21, 2026. Keep the reports in the same directory as this matrix.
 
 ## Defects by requirement and firmware version
 
 | Requirement ID | Scenario / Verification | FW 1.3.0 | FW 1.4.0 | FW 1.5.0 | Regression status |
 |---|---|---|---|---|---|
+| OTA-9 (related) / PRD §2 | Firmware boot and UART readiness after full flash; extra power cycle required | [BUG-BOOT-001](BUG_REPORTS_FW_1.3.0.md#bug-boot-001--firmware-130-does-not-start-responding-after-flashing-until-the-device-is-rebooted) | NOT TESTED | NOT TESTED | Not established |
 | FR-L2 | Named color — physical LED output | [BUG-LAMP-001](BUG_REPORTS_FW_1.3.0.md#bug-lamp-001--physical-led-colors-differ-from-named-and-explicit-rgb-commands) | PASS | PASS | No |
 | FR-L3 | Arbitrary RGB — physical LED output | [BUG-LAMP-001](BUG_REPORTS_FW_1.3.0.md#bug-lamp-001--physical-led-colors-differ-from-named-and-explicit-rgb-commands) | PASS | PASS | No |
 | FR-L4 | Physical LED color matches the requested value | [BUG-LAMP-001](BUG_REPORTS_FW_1.3.0.md#bug-lamp-001--physical-led-colors-differ-from-named-and-explicit-rgb-commands) | PASS | PASS | No |
@@ -21,7 +22,9 @@
 | OTA-8 / FR-L10 | Preserve scenes after OTA firmware reinstall | N/A (scenes unsupported) | N/A (scenes unsupported) | [REGRESSION-OTA-005](BUG_REPORTS_FW_1.5.0.md#regression-ota-005--scenes-disappear-after-force-reinstall-of-firmware-150) | **REGRESSION: 1.5.0** (no comparable earlier FW) |
 | OTA-11 | OTA recovery after rejection of an invalid image | [BUG-OTA-003](BUG_REPORTS_FW_1.3.0.md#bug-ota-003--ota-stays-locked-after-an-invalid-image-is-rejected) | PASS | [BUG-OTA-003](BUG_REPORTS_FW_1.5.0.md#bug-ota-003--ota-stays-locked-after-an-invalid-image-is-rejected) | **REGRESSION: recurrence in 1.5.0** |
 
-**Legend:** `PASS` means the associated automated test passed in the latest run (not that the entire requirement was exhaustively verified); `SKIPPED` means the test did not execute for the stated reason; `N/A` means the feature is unavailable in that firmware version; `BUG-*` denotes an existing issue ID; `REGRESSION-*` denotes a regression issue record, while root causes involving tests or HIL may still require independent verification. **Links point to full reports for the relevant firmware version.**
+**Requirement mapping note — BUG-BOOT-001:** The PRD has **no explicit requirement for readiness after a full UART/esptool flash**. **OTA-9** is the closest numbered requirement because it covers booting and validating a new firmware image after a reset; **PRD §2** describes the related boot/image mechanism. Neither specifies the UART-flashing scenario directly. This observed issue is therefore linked to the closest related requirement, **not** presented as a proven OTA-9 nonconformance. The issue was observed outside pytest and is not included in its FAILED count.
+
+**Legend:** `PASS` means the associated automated test passed in the latest run (not that the entire requirement was exhaustively verified); `SKIPPED` means the test did not execute for the stated reason; `NOT TESTED` means no comparable post-flash verification was supplied; `N/A` means the feature is unavailable in that firmware version; `BUG-*` denotes an existing issue ID; `REGRESSION-*` denotes a regression issue record, while root causes involving tests or HIL may still require independent verification. **Links point to full reports for the relevant firmware version.**
 
 ## Regression bugs
 
@@ -43,10 +46,10 @@ Other `BUG-*` records retain their existing IDs without renaming. Evidence of te
 
 | Firmware | Passed | Failed | Skipped | Documented issue records |
 |---|---:|---:|---:|---:|
-| 1.3.0 | 66 | 14 | 13 | 6 |
+| 1.3.0 | 66 | 14 | 13 | 7 (including 1 post-flash observation) |
 | 1.4.0 | 75 | 4 | 14 | 4 |
 | 1.5.0 | 76 | 8 | 9 | 8 |
 
-**Total:** 26 FAILED test cases and **12 distinct issue IDs** across the three firmware reports. Do not equate failed test cases with unique firmware bugs. The table excludes `deselected` tests (8 in each suite).
+**Total:** 26 FAILED pytest cases and **13 distinct issue IDs** across the three firmware reports, including 1 additional post-flash observation outside pytest. Do not equate failed test cases with unique firmware bugs. The table excludes `deselected` tests (8 in each suite).
 
 **Firmware-version note:** `REGRESSION-OTA-004` occurs during the 1.4.0 suite but tests the **1.4.0 → 1.5.0** transition. The matrix lists it under the 1.4.0 starting firmware with the target version noted; this does not imply that the defect necessarily belongs to firmware 1.4.0.
