@@ -7,16 +7,19 @@ I (16203) wifi station:   partition: ota_0 @ 0x10000, state: valid
 
 **ota check**
 
-> I (250693) wifi:<ba-add>idx:1 (ifx:0, 32:16:9d:25:9c:16), tid:0, ssn:1, winSize:64
-> I (251073) esp-x509-crt-bundle: Certificate validated
-> I (252413) esp-x509-crt-bundle: Certificate validated
-> I (253273) wifi station: [OTA] current version: 1.3.0
-> I (253273) wifi station: [OTA] stable channel:  1.4.0
-> I (253273) wifi station: [OTA] beta channel:    1.5.0
-> I (253283) wifi station: [OTA] update available. Type 'ota update'
+```text
+I (250693) wifi:<ba-add>idx:1 (ifx:0, 32:16:9d:25:9c:16), tid:0, ssn:1, winSize:64
+I (251073) esp-x509-crt-bundle: Certificate validated
+I (252413) esp-x509-crt-bundle: Certificate validated
+I (253273) wifi station: [OTA] current version: 1.3.0
+I (253273) wifi station: [OTA] stable channel:  1.4.0
+I (253273) wifi station: [OTA] beta channel:    1.5.0
+I (253283) wifi station: [OTA] update available. Type 'ota update'
+```
 
 **ota update**
 
+```text
 I (298403) esp-x509-crt-bundle: Certificate validated
 I (299043) wifi station: [OTA] stable channel: 1.4.0, current: 1.3.0
 I (299043) wifi station: [OTA] current version: 1.3.0 (partition ota_0)
@@ -151,9 +154,11 @@ I (599) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (599) wifi station: [OTA] running partition: ota_1, version 1.4.0
 W (609) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (649) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota update beta**
 
+```text
 I (265999) wifi:<ba-add>idx:1 (ifx:0, 32:16:9d:25:b8:9e), tid:0, ssn:0, winSize:64
 I (266409) esp-x509-crt-bundle: Certificate validated
 I (267239) wifi station: [OTA] beta channel: 1.5.0, current: 1.4.0
@@ -293,9 +298,11 @@ I (739) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (739) wifi station: [OTA] running partition: ota_0, version 1.5.0
 W (749) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (789) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota install 1.4.0**
 
+```text
 I (168669) wifi station: [OTA] current version: 1.3.0 (partition ota_1)
 I (168669) wifi station: [OTA] target partition: ota_0
 I (168669) wifi station: [OTA] downloading: https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/v1.4.0/station_WiFi.bin
@@ -429,9 +436,11 @@ I (599) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (599) wifi station: [OTA] running partition: ota_0, version 1.4.0
 W (609) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (649) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota install 1.3.0 force**
 
+```text
 I (230899) wifi station: [OTA] current version: 1.5.0 (partition ota_0)
 I (230899) wifi station: [OTA] target partition: ota_1
 I (230899) wifi station: [OTA] downloading: https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/v1.3.0/station_WiFi.bin
@@ -565,9 +574,11 @@ I (599) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (599) wifi station: [OTA] running partition: ota_1, version 1.3.0
 W (599) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (649) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota broken**
 
+```text
 I (103289) wifi station: [OTA] current version: 1.4.0 (partition ota_0)
 I (103289) wifi station: [OTA] target partition: ota_1
 I (103289) wifi station: [OTA] downloading: https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/broken/station_WiFi.bin
@@ -798,9 +809,11 @@ I (581) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (581) wifi station: [OTA] running partition: ota_0, version 1.4.0
 I (591) wifi station: saved credentials found but auto-connect disabled. Type 'connect' to connect.
 I (601) wifi station: station_WiFi fw v1.4.0 ready. Type 'help' for commands
+```
 
 **ota https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/v1.5.0/station_WiFi.bin**
 
+```text
 I (426031) wifi station: [OTA] current version: 1.4.0 (partition ota_0)
 I (426031) wifi station: [OTA] target partition: ota_1
 I (426031) wifi station: [OTA] downloading: https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/v1.5.0/station_WiFi.bin
@@ -937,9 +950,11 @@ I (739) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (739) wifi station: [OTA] running partition: ota_1, version 1.5.0
 W (749) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (789) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota-test-server**
 
+```text
 I (87759) wifi station: === OTA Update Started ===
 I (87759) wifi station: Checking for updates...
 I (89259) wifi station: Found firmware v2.0.1
@@ -1085,9 +1100,11 @@ I (581) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (581) wifi station: [OTA] running partition: ota_1, version 1.5.0
 I (581) wifi station: saved credentials found but auto-connect disabled. Type 'connect' to connect.
 I (591) wifi station: station_WiFi fw v1.5.0 ready. Type 'help' for commands
+```
 
 **ota update** - *wi-fi interrupted during progress 30%*
 
+```text
 I (193969) wifi:<ba-add>idx:1 (ifx:0, 32:16:9d:25:b8:2e), tid:0, ssn:1, winSize:64
 I (194409) esp-x509-crt-bundle: Certificate validated
 I (195279) wifi station: [OTA] stable channel: 1.4.0, current: 1.3.0
@@ -1223,9 +1240,11 @@ I (599) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (599) wifi station: [OTA] running partition: ota_1, version 1.4.0
 W (609) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (649) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota update beta** - *wi-fi interrupted during progress 20%*
 
+```text
 I (272639) esp-x509-crt-bundle: Certificate validated
 I (273479) wifi station: [OTA] beta channel: 1.5.0, current: 1.4.0
 I (273489) wifi station: [OTA] current version: 1.4.0 (partition ota_1)
@@ -1364,9 +1383,11 @@ I (739) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (739) wifi station: [OTA] running partition: ota_0, version 1.5.0
 W (739) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (789) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota install 1.3.0 force** - *wi-fi interrupted before progress*
 
+```text
 I (214049) wifi station: [OTA] current version: 1.5.0 (partition ota_0)
 I (214049) wifi station: [OTA] target partition: ota_1
 I (214049) wifi station: [OTA] downloading: https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/v1.3.0/station_WiFi.bin
@@ -1500,9 +1521,11 @@ I (599) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (599) wifi station: [OTA] running partition: ota_1, version 1.3.0
 W (599) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (649) wifi station: [OTA] self-check passed, firmware marked VALID
+```
 
 **ota install 1.4.0** - *wi-fi interrupted before progress*
 
+```text
 I (93379) wifi station: [OTA] current version: 1.3.0 (partition ota_1)
 I (93379) wifi station: [OTA] target partition: ota_0
 I (93379) wifi station: [OTA] downloading: https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/v1.4.0/station_WiFi.bin
@@ -1636,3 +1659,4 @@ I (599) wifi station: wifi initialized. Type 'connect' to join a network (intera
 I (599) wifi station: [OTA] running partition: ota_0, version 1.4.0
 W (609) wifi station: [OTA] new firmware, state PENDING_VERIFY - running self-check...
 I (649) wifi station: [OTA] self-check passed, firmware marked VALID
+```
