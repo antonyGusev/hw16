@@ -59,7 +59,18 @@ Example:
 HIL_PORT=your_com_port
 SSID=your_wifi_ssid
 PASSWORD=your_wifi_password
-HIL_CAMERA_URL=http://<hil-ip>/capture
+
+OTA_INVALID_IMAGE_HEADER_1_3_0=https://raw.githubusercontent.com/antonyGusev/broken_images/master/TC-OTA-022_invalid_header.bin
+OTA_CORRUPTED_IMAGE_1_3_0=https://raw.githubusercontent.com/antonyGusev/broken_images/master/TC-OTA-027_corrupted_image.bin
+
+OTA_INVALID_IMAGE_HEADER_1_4_0=https://raw.githubusercontent.com/antonyGusev/broken_images/master/TC-OTA-022_invalid_header_v1.4.0.bin
+OTA_CORRUPTED_IMAGE_1_4_0=https://raw.githubusercontent.com/antonyGusev/broken_images/master/TC-OTA-027_corrupted_image_v1.4.0.bin
+
+OTA_INVALID_IMAGE_HEADER_1_5_0=https://raw.githubusercontent.com/antonyGusev/broken_images/master/TC-OTA-022_invalid_header_v1.5.0.bin
+OTA_CORRUPTED_IMAGE_1_5_0=https://raw.githubusercontent.com/antonyGusev/broken_images/master/TC-OTA-027_corrupted_image_v1.5.0.bin
+
+OTA_HTTPS_URL=https://raw.githubusercontent.com/BohdanHorbanych/esp32-ota-files/main/firmware/v1.5.0/station_WiFi.bin
+OTA_HTTPS_VERSION=1.5.0
 ```
 
 ## Running Tests
