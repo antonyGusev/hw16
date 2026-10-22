@@ -160,7 +160,7 @@ Fixtures prepare the required DUT and HIL state so tests remain independent from
 
 ### `artifacts`
 
-Contains artifacts generated during test execution.
+Contains artifacts generated during test execution and other corresponded to the project documentation.
 
 Camera artifacts include full debug frames and detected LED regions:
 
